@@ -2460,15 +2460,40 @@ into the geometry.
             hair_system.parm("clump_guides").set(hair_system.relativePathTo(null_clumps_out))
 #            hair_system.parm("full_interpolation").set(1)                    
             # Copying the material to the grooming in case they want to use the haircore for rendering
+
+
+            # todo
+            #  creeate the matnet and put the 2 shaders with a switch
+            #  replace this with the actual HDA
+
+            matnet_network = parent.createNode("matnet")
+
+            fabio_material = matnet_network.createNode("fabio_material")
+            fabio_material_x = matnet_network.createNode("fabio_material_x")
+
+            switch_material = matnet_network.createNode("switch")
+            switch_material.setInput(1, fabio_material_x)
+            switch_material.setInput(2, fabio_material)
+
+            collect_fabio_materials = matnet_network.createNode("collect", "collect_fabio_materials")
+            collect_fabio_materials.setInput(0, switch_material, 0)
+
+            matnet_network.layoutChildren()
+
+            parent.parm("shop_materialpath").set(parent.relativePathTo(collect_fabio_materials))
+
+
+            """
             matnet_network = hair_system.node("Hair_Master/matnet_Hair_Master")
             hsm = matnet_network.node("Hair_Shader_Master")
             hsmc = matnet_network.node("Hair_Shader_Master_Collect")
             hou.copyNodesToClipboard([hsm, hsmc])
             matnet_in_groom = parent.createNode("matnet")
             hou.pasteNodesFromClipboard(matnet_in_groom)
+
             Hair_Shader_Master_in_groom = matnet_in_groom.node("Hair_Shader_Master")
             Hair_Shader_Master_in_groom.parm("vizualizer_node").set("../../fabioattributes1")
-            
+
             change_parms = [
                 "white_hairs_aov",
                 "crazy_hairs_aov",
@@ -2480,16 +2505,16 @@ into the geometry.
                 "clumped_aov",
             ]
             for i in change_parms:
-                pm =Hair_Shader_Master_in_groom.parm(i)
+                pm = Hair_Shader_Master_in_groom.parm(i)
                 ex = pm.expression()
                 new_ex = ex.replace('opname("../../..")', 'opname("../..")')
                 pm.setExpression(new_ex)
-                
-            
-            
+                        
             parent.parm("vport_shadeopen").set(1)
             parent.parm("shop_materialpath").set("matnet1/Hair_Shader_Master_Collect")
             parent.parm("geo_velocityblur").set(1)
+            """
+
 
             image(fabio_attributes)
 
@@ -2503,7 +2528,7 @@ def add_fur_nodes(parent):
     group_root = parent.createNode("groupcreate", "group_root")
     group_root.parm("groupname").set("roots")
     group_root.parm("grouptype").set(1)
-    group_root.parm("basegroup").set(0)
+    group_root.parm("basegroup").set("0")
 
     group_root.setInput(0, line, 0)
 
