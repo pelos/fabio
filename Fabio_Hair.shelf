@@ -7,9 +7,8 @@
 
   <toolshelf name="fabio_hair" label="Fabio_Hair">
     <memberTool name="fur"/>
-    <memberTool name="fur_comb"/>
-    <memberTool name="split1"/>
     <memberTool name="hair_15"/>
+    <memberTool name="split1"/>
     <memberTool name="hair_current"/>
     <memberTool name="dops"/>
     <memberTool name="chop_hair0"/>
@@ -24,167 +23,160 @@
     for i in node_list:
         if i.type().nameComponents()[2] == "geo":
             for j in i.children():
-                if j.isDisplayFlagSet().conjugate() == 1:
-                    # Setting up the Geo guide curves needed for the hair system  --------------
-                    node_to_branch = j
-                    color_node = hou.Color((.5,.5,0))
-                    parent = node_to_branch.parent()                                      
-                    nameing  = parent.name()
-                    ppos = parent.position()                                        
-                    
-                    lvl = parent.parent()
-                    parent =lvl.createNode("geo", nameing +"_Grooming")
-                    try:
-                        parent.node("file1").destroy()
-                    except:
-                        pass
-                    parent.parm("vm_rendervisibility").set("")
-                    parent.setDisplayFlag(0)
-                    parent.setPosition([ppos[0], ppos[1]-1])
-                    
-                    om = parent.createNode("object_merge")
-                    om.parm("objpath1").set(om.relativePathTo(i))                    
-                    om.parm("xformtype").set(1)                    
-                    
-                    null_skin_out = parent.createNode("null", "geometry_in")
-                    null_skin_out.setColor(color_node)
-                    null_skin_out.setInput(0,om,0)
-                    null_skin_out.setDisplayFlag(1)
-                    null_skin_out.setRenderFlag(1)
+                if type(j) == hou.SopNode:
+                    if j.isDisplayFlagSet() == 1:
 
-#                    subnet_geo_deformation = parent.createNode("subnet", "subnet_geo_deformation")
-#                    subnet_geo_deformation.setInput(0, null_skin_out)
-#                    subnet_geo_deformation.bypass(1)
-                    
-                    attrib_fur_density = parent.createNode("attribcreate", "attribcreate_fur_density")
-                    attrib_fur_density.parm("name1").set("furdensity")
-                    attrib_fur_density.setInput(0, null_skin_out)
-                    attrib_fur_density.bypass(1)
+                        # Setting up the Geo guide curves needed for the hair system  --------------
+                        node_to_branch = j
+                        color_node = hou.Color((.5, .5, 0))
+                        parent = node_to_branch.parent()
+                        nameing = parent.name()
+                        ppos = parent.position()
 
-                    paint_fur_density = parent.createNode("paint", "paint_fur_density")
-                    paint_fur_density.parm("overridecd").set(1)
-                    paint_fur_density.parm("cdname").set("furdensity")                    
-                    paint_fur_density.setInput(0, attrib_fur_density)
-                    paint_fur_density.bypass(1)                    
-                    
-                    null_skin_out = parent.createNode("null", "Out_Skin")
-                    null_skin_out.setColor(color_node)
-                    null_skin_out.setInput(0,paint_fur_density,0)
+                        lvl = parent.parent()
+                        parent = lvl.createNode("geo", nameing + "_Grooming")
+                        try:
+                            parent.node("file1").destroy()
+                        except:
+                            pass
+                        parent.parm("vm_rendervisibility").set("")
+                        parent.setDisplayFlag(0)
+                        parent.setPosition([ppos[0], ppos[1] - 1])
 
-                    group_edges = parent.createNode("group", "group_edges")
-                    group_edges.parm("groupnumber").set(0)
-                    group_edges.parm("groupedges").set(1)
-                    group_edges.parm("unshared").set(1)                    
-                    group_edges.parm("crname").set("open")
-                    group_edges.setInput(0,null_skin_out)
-                    
-                    polycap = parent.createNode("polycap")
-                    polycap.parm("group").set("open")
-                    polycap.setInput(0,group_edges)
-                    
-                    
-                    vdb_from_poly= parent.createNode("vdbfrompolygons")
-                    vdb_from_poly.parm("voxelsize").set(0.035)
-                    vdb_from_poly.parm("useworldspaceunits").set(1)
-                    vdb_from_poly.parm("exteriorband").set(0.1)
-                    vdb_from_poly.parm("fillinterior").set(1)
-                    vdb_from_poly.setInput(0,polycap)
-                    
-#                    dhguides = parent.createNode("drawhairguides")
-                    dhguides = parent.createNode("guidedraw", "guidedraw_create_guides")
-                    dhguides.parm("scalpvoxelsize").set(0.15)
-                    dhguides.parm("outputsegs").set(10)
-                    dhguides.setInput(1, null_skin_out)
-                    dhguides.setInput(2, vdb_from_poly)
-                    
-                    curvegroom = parent.createNode("guidegroom", "guidegroom_shape_curves")
-                    curvegroom.parm("segments").set(dhguides.parm("outputsegs"))                    
-                    curvegroom.setInput(0, dhguides)
-                    curvegroom.setInput(1, null_skin_out)
-                    curvegroom.setInput(2, vdb_from_poly)                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    attrib_len = parent.createNode("attribcreate", "attribcreate_len")
-                    attrib_len.parm("name1").set("lenn")
-                    attrib_len.parm("varname1").set("LENN")
-                    attrib_len.parm("class1").set(1)
-                    attrib_len.parm("value1v1").setExpression('arclen(opinputpath(".",0), $PR,0,1)')
-                    attrib_len.parm("createvarmap1").set(1)
-                    attrib_len.bypass(1)
-                    attrib_len.setInput(0, curvegroom)
+                        om = parent.createNode("object_merge")
+                        om.parm("objpath1").set(om.relativePathTo(i))
+                        om.parm("xformtype").set(1)
 
-                    group_by_len = parent.createNode("group", "group_view_curves_by_len")
-                    group_by_len.parm("filter").setExpression("$LENN<.05")
-                    group_by_len.parm("groupop").set(2)
-                    group_by_len.bypass(1)
-                    group_by_len.setInput(0, attrib_len)
+                        null_skin_out = parent.createNode("null", "geometry_in")
+                        null_skin_out.setColor(color_node)
+                        null_skin_out.setInput(0, om, 0)
+                        null_skin_out.setDisplayFlag(1)
+                        null_skin_out.setRenderFlag(1)
 
-                    del_by_len = parent.createNode("delete", "delete_by_len")
-                    del_by_len.parm("groupop").set(2)
-                    del_by_len.parm("filter").setExpression("$LENN<.05")
-                    del_by_len.bypass(1)
-                    del_by_len.setInput(0, attrib_len)
-                    
-                    
-#                    subnet_hair_deformation = parent.createNode("subnet", "subnet_hair_deformation")
-#                    subnet_hair_deformation.setInput(0, del_by_len)
-                    curves_attatch_to_geo = parent.createNode("curves_attatch_to_geometry")
-                    curves_attatch_to_geo.setInput(0, del_by_len)
-                    curves_attatch_to_geo.setInput(1, null_skin_out)                    
-                                       
-                    #Continue with parent code----------------
+                        # subnet_geo_deformation = parent.createNode("subnet", "subnet_geo_deformation")
+                        # subnet_geo_deformation.setInput(0, null_skin_out)
+                        # subnet_geo_deformation.bypass(1)
 
-                    trail = parent.createNode("trail")
-                    trail.parm("result").set(3)
-                    trail.setInput(0, curves_attatch_to_geo)
-                    
-                    
-                    null_to_dops = parent.createNode("null", "Dops_Helper")
-                    null_to_dops.setNextInput(trail)
-                    null_to_dops.setColor(hou.Color((.25,.35,.5)))
+                        attrib_fur_density = parent.createNode("attribcreate", "attribcreate_fur_density")
+                        attrib_fur_density.parm("name1").set("furdensity")
+                        attrib_fur_density.setInput(0, null_skin_out)
+                        attrib_fur_density.bypass(1)
 
-                    null_guides_out = parent.createNode("null", "Out_Guides")
-                    null_guides_out.setColor(color_node)
-                    null_guides_out.setInput(0,null_to_dops,0)
+                        paint_fur_density = parent.createNode("paint", "paint_fur_density")
+                        paint_fur_density.parm("overridecd").set(1)
+                        paint_fur_density.parm("cdname").set("furdensity")
+                        paint_fur_density.setInput(0, attrib_fur_density)
+                        paint_fur_density.bypass(1)
 
-                    delete_node = parent.createNode("delete")
-                    delete_node.parm("entity").set(0)
-                    delete_node.setInput(0, null_guides_out, 0)
-                    delete_node.parm("groupop").set(1)
+                        null_skin_out = parent.createNode("null", "Out_Skin")
+                        null_skin_out.setColor(color_node)
+                        null_skin_out.setInput(0, paint_fur_density, 0)
 
-                    null_clumps_out = parent.createNode("null", "Out_Clumps")
-                    null_clumps_out.setInput(0, delete_node,0)
-                    null_clumps_out.setColor(color_node)                                      
+                        group_edges = parent.createNode("group", "group_edges")
+                        group_edges.parm("groupnumber").set(0)
+                        group_edges.parm("groupedges").set(1)
+                        group_edges.parm("unshared").set(1)
+                        group_edges.parm("crname").set("open")
+                        group_edges.setInput(0, null_skin_out)
 
-                    parent.layoutChildren()
+                        polycap = parent.createNode("polycap")
+                        polycap.parm("group").set("open")
+                        polycap.setInput(0, group_edges)
 
-                    #----------------------------------------------
-                    # setting for making the hair system the upper level
-                    obj_pos = parent.position()
+                        vdb_from_poly = parent.createNode("vdbfrompolygons")
+                        vdb_from_poly.parm("voxelsize").set(0.035)
+                        vdb_from_poly.parm("useworldspaceunits").set(1)
+                        vdb_from_poly.parm("exteriorband").set(0.1)
+                        vdb_from_poly.parm("fillinterior").set(1)
+                        vdb_from_poly.setInput(0, polycap)
 
-                    obj_pos_x = obj_pos[0]
-                    obj_pos_y = obj_pos[1]
-                    #nameing  = parent.name()
+                        #                    dhguides = parent.createNode("drawhairguides")
+                        dhguides = parent.createNode("guidedraw", "guidedraw_create_guides")
+                        dhguides.parm("scalpvoxelsize").set(0.15)
+                        dhguides.parm("outputsegs").set(10)
+                        dhguides.setInput(1, null_skin_out)
+                        dhguides.setInput(2, vdb_from_poly)
 
+                        curvegroom = parent.createNode("guidegroom", "guidegroom_shape_curves")
 
-                    hair_system = parent.parent().createNode("Fabio_Hair_System", "Fabio_Hair_System_"+nameing)
+                        curvegroom.parm("segments").set(dhguides.parm("outputsegs"))
+                        curvegroom.setInput(0, dhguides)
+                        curvegroom.setInput(1, null_skin_out)
+                        curvegroom.setInput(2, vdb_from_poly)
 
-                    hair_system.setPosition([obj_pos_x, obj_pos_y-1])
+                        attrib_len = parent.createNode("attribcreate", "attribcreate_len")
+                        attrib_len.parm("name1").set("lenn")
+                        attrib_len.parm("varname1").set("LENN")
+                        attrib_len.parm("class1").set(1)
+                        attrib_len.parm("value1v1").setExpression('arclen(opinputpath(".",0), $PR,0,1)')
+                        attrib_len.parm("createvarmap1").set(1)
+                        attrib_len.bypass(1)
+                        attrib_len.setInput(0, curvegroom)
+
+                        group_by_len = parent.createNode("group", "group_view_curves_by_len")
+                        group_by_len.parm("filter").setExpression("$LENN<.05")
+                        group_by_len.parm("groupop").set(2)
+                        group_by_len.bypass(1)
+                        group_by_len.setInput(0, attrib_len)
+
+                        del_by_len = parent.createNode("delete", "delete_by_len")
+                        del_by_len.parm("groupop").set(2)
+                        del_by_len.parm("filter").setExpression("$LENN<.05")
+                        del_by_len.bypass(1)
+                        del_by_len.setInput(0, attrib_len)
+
+                        #                    subnet_hair_deformation = parent.createNode("subnet", "subnet_hair_deformation")
+                        #                    subnet_hair_deformation.setInput(0, del_by_len)
+                        curves_attatch_to_geo = parent.createNode("curves_attatch_to_geometry")
+                        curves_attatch_to_geo.setInput(0, del_by_len)
+                        curves_attatch_to_geo.setInput(1, null_skin_out)
+
+                        # Continue with parent code----------------
+
+                        trail = parent.createNode("trail")
+                        trail.parm("result").set(3)
+                        trail.setInput(0, curves_attatch_to_geo)
+
+                        null_to_dops = parent.createNode("null", "Dops_Helper")
+                        null_to_dops.setNextInput(trail)
+                        null_to_dops.setColor(hou.Color((.25, .35, .5)))
+
+                        null_guides_out = parent.createNode("null", "Out_Guides")
+                        null_guides_out.setColor(color_node)
+                        null_guides_out.setInput(0, null_to_dops, 0)
+
+                        delete_node = parent.createNode("delete")
+                        delete_node.parm("entity").set(0)
+                        delete_node.setInput(0, null_guides_out, 0)
+                        delete_node.parm("groupop").set(1)
+
+                        null_clumps_out = parent.createNode("null", "Out_Clumps")
+                        null_clumps_out.setInput(0, delete_node, 0)
+                        null_clumps_out.setColor(color_node)
+
+                        parent.layoutChildren()
+
+                        # ----------------------------------------------
+                        # setting for making the hair system the upper level
+                        obj_pos = parent.position()
+
+                        obj_pos_x = obj_pos[0]
+                        obj_pos_y = obj_pos[1]
+                        # nameing  = parent.name()
+
+                        hair_system = parent.parent().createNode("Fabio_Hair_System", "Fabio_Hair_System_" + nameing)
+
+                        hair_system.setPosition([obj_pos_x, obj_pos_y - 1])
+
+                        hair_system.parm("skin").set(hair_system.relativePathTo(null_skin_out))
+                        hair_system.parm("hair_guides").set(hair_system.relativePathTo(null_guides_out))
+                        hair_system.parm("clump_guides").set(hair_system.relativePathTo(null_clumps_out))
+
+                        hair_system.parm("full_interpolation").set(1)
 
 
-                    hair_system.parm("skin").set(hair_system.relativePathTo(null_skin_out))
-                    hair_system.parm("hair_guides").set(hair_system.relativePathTo(null_guides_out))
-                    hair_system.parm("clump_guides").set(hair_system.relativePathTo(null_clumps_out))
-                    
-                    hair_system.parm("full_interpolation").set(1)
-                    
-populate_hair( hou.selectedNodes() )]]></script>
+populate_hair(hou.selectedNodes())
+]]></script>
   </tool>
 
   <tool name="chop_hair" label="Chop Hair" icon="NETWORKS_chop">
@@ -341,7 +333,6 @@ will drop a rfx_hair_system, and will conect it to the nulls Outs.]]></helpText>
     for i in node_list:
         if i.type().nameComponents()[2] == "geo":
             for j in i.children():
-                print(type(j))
                 if type(j) == hou.SopNode:
                     if j.isDisplayFlagSet() == 1:
                         # Setting up the Geo guide curves needed for the hair system  --------------
@@ -476,259 +467,6 @@ will drop a rfx_hair_system, and will conect it to the nulls Outs.]]></helpText>
                         hair_system.parm("full_interpolation").set(1)
                     
 populate_hair( hou.selectedNodes() )]]></script>
-  </tool>
-
-  <tool name="fur_comb" label="Fur Comb" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?comb.png">
-    <helpText><![CDATA[will create an ARROW, (point with normal and pscale) with a shape of a pyramid, 
-and connect a vopsop.
-
-this drives the normals via point cloud,  
-(this is one of the many ways to arrenge the grum,  we can still use regular attribute transfer)]]></helpText>
-    <script scriptType="python"><![CDATA[def c_comb(node):
-    color_node_out = hou.Color((.5,.5,0))
-    if node.type().nameComponents()[2] == "geo":
-
-        out_skin_node = node.node("Out_Skin")
-        if out_skin_node is None:
-            raise ValueError("Out_Skin node fas not found, try to use it on the node to groom not the original geometry")    
-        subnet_pc = node.createNode("subnet", "subnet_PC_cloud")                
-        out_skin_node_outputs = out_skin_node.outputs()
-
-        for i in out_skin_node_outputs:
-            i.setInput(0, subnet_pc, 0)
-        subnet_pc.setInput(0, out_skin_node, 0)
-        color_node = hou.Color((.25,.65,.89))
-        subnet_pc.setColor(color_node)
-        out_skin_position = out_skin_node.position()
-        subnet_pc.setPosition([out_skin_position[0], out_skin_position[1]-1   ])
-        
-        merge_fur_arrows = subnet_pc.createNode("merge", "merge_Points_Cloud")
-
-        delete_node = subnet_pc.createNode("delete")
-        delete_node.parm("group").set("pointer_*")
-        delete_node.parm("negate").set(1)
-        delete_node.parm("entity").set(1)
-
-        delete_node.setNextInput(merge_fur_arrows)
-
-        null_pc_out_node = subnet_pc.createNode("null", "cloud_Out")
-        null_pc_out_node.setNextInput(delete_node)      
-
-        # getting the info to make as many fur_arrows as the user specify.
-        lp = out_skin_node.geometry().points()
-        lp = list(lp)
-
-        npt = len(lp)
-        percentage = float(hou.ui.readInput("Percentage of points to convert to Fur Arrows")[1])
-        percentage = percentage / 100.0
-        points_to_rand = int(npt*percentage)
-
-        import random
-        lp_random = random.sample(lp,points_to_rand)
-
-        sub_list = []
-        trans_list = []
-        for i in lp_random:
-            sub, trans = make_arrow(subnet_pc, merge_fur_arrows, i)
-            sub_list.append(sub)
-            trans_list.append(trans)
-
-        # creating the VOP SOP
-        vopsop_point_arrows = subnet_pc.createNode("attribvop","pointvop_point_fur_arrows")
-        # vopsop_point_arrows.setInput(0,out_skin_node, 0)
-        vopsop_point_arrows.setInput(0, subnet_pc.indirectInputs()[0] )
-        vopsop_point_arrows.setInput(1,null_pc_out_node, 0)
-
-        globals = vopsop_point_arrows.node("geometryvopglobal1")
-        output = vopsop_point_arrows.node("geometryvopoutput1")
-
-        file_pc = vopsop_point_arrows.createNode("parameter")
-        file_pc.parm("parmname").set("file")
-        file_pc.parm("parmlabel").set("file")
-        file_pc.parm("parmtype").set(16)
-        file_pc.parm("filedef").set('op:`opinputpath(".", 1)`')
-
-        pc_open_rad = vopsop_point_arrows.createNode("pcopen", "pcopen_radius")
-
-        pc_open_rad.setInput(0,file_pc,0)
-        pc_open_rad.setInput(2,globals,0)
-        pc_open_rad.parm("radius").set(1000)
-        pc_open_rad.parm("maxpoints").set(1)
-
-        pc_filter_radius = vopsop_point_arrows.createNode("pcfilter","pcfilter_pc_radius")
-        pc_filter_radius.parm("channel").set("pc_radius")
-        pc_filter_radius.parm("signature").set("f")
-        pc_filter_radius.setInput(0,pc_open_rad,0)
-
-        pc_open = vopsop_point_arrows.createNode("pcopen", "pcopen")
-        pc_open.setInput(0,file_pc,0)
-        pc_open.setInput(2,globals,0)
-        pc_open.setInput(5,pc_filter_radius,0)
-
-        p_filter = vopsop_point_arrows.createNode("pcfilter","pcfilter_P")
-        p_filter.parm("channel").set("P")
-        p_filter.setInput(0,pc_open,0)
-
-        n_filter = vopsop_point_arrows.createNode("pcfilter","pcfilter_N")
-        n_filter.parm("channel").set("N")
-        n_filter.setInput(0,pc_open,0)
-
-        pscale_filter = vopsop_point_arrows.createNode("pcfilter","pcfilter_pscale")
-        pscale_filter.parm("channel").set("pscale")
-        pscale_filter.setInput(0,pc_open,0)
-        pscale_filter.parm("signature").set("f")
-
-        dist = vopsop_point_arrows.createNode("distance")
-        dist.setInput(0,p_filter,0)
-        dist.setInput(1,globals,0)
-
-        mult = vopsop_point_arrows.createNode("multiply")
-        mult.setInput(0,n_filter,0)
-        mult.setInput(1,pscale_filter,0)
-
-        compare = vopsop_point_arrows.createNode("compare")
-        compare.parm("cmp").set("lt")
-        compare.setInput(0,dist,0)
-        compare.setInput(1,pc_filter_radius,0)
-
-        two_way = vopsop_point_arrows.createNode("twoway")
-        two_way.setInput(0,compare,0)
-        two_way.setInput(1,mult,0)
-        two_way.setInput(2,globals,8)
-
-        bind_pc_radius = vopsop_point_arrows.createNode("bind")
-        bind_pc_radius.parm("parmname").set("pc_radius")
-        
-        aver = vopsop_point_arrows.createNode("avg")
-        aver.setInput(0,two_way,0)
-        aver.setInput(1,globals,8)
-        
-        switcher_toggle = vopsop_point_arrows.createNode("parameter")
-        switcher_toggle.parm("parmname").set("average")
-        switcher_toggle.parm("parmlabel").set("average")
-        switcher_toggle.parm("parmtype").set(2)
-
-        switcher_node = vopsop_point_arrows.createNode("switch")
-        switcher_node.setInput(0,switcher_toggle,0)
-        switcher_node.setInput(1,two_way,0)
-        switcher_node.setInput(2,aver,0)
-
-        lenght = vopsop_point_arrows.createNode("length")
-        lenght.setInput(0,switcher_node,0)
-
-        bind_exp_pscale = vopsop_point_arrows.createNode("bind")
-        bind_exp_pscale.parm("parmname").set("pscale")
-        bind_exp_pscale.parm("useasparmdefiner").set(1)
-        bind_exp_pscale.parm("exportparm").set(2)
-        bind_exp_pscale.setInput(0,lenght,0)
-        
-        output.setInput(4,switcher_node,0)
-        #FINISH VOPSOP
-
-        smooth = subnet_pc.createNode("smooth", "smooth_normals")
-        smooth.bypass(1)
-        smooth.setInput(0, vopsop_point_arrows, 0)
-        smooth.parm("attributes").set("N")
-        
-        pc_out_null = subnet_pc.createNode("null","PC_OUT")
-        pc_out_null.setInput(0, smooth, 0)
-        pc_out_null.setRenderFlag(1)
-        pc_out_null.setDisplayFlag(1)
-
-        try:
-            node.node("pointwrangle_pscale").bypass(1)
-        except:
-            pass
-        subnet_pc.layoutChildren()
-        for list_of_nodes in [sub_list, trans_list]:
-            first_position = list_of_nodes[0].position()
-            for i in list_of_nodes:
-                i.setPosition([  i.position()[0], first_position[1],    ])
-
-        vopsop_point_arrows.cook(force=True)
-def make_arrow(node, connector, point):
-    color_node = hou.Color((.25,.65,.89))
-    arrow_subnet = node.createNode("subnet", "fur_arrow1")
-
-    tg = arrow_subnet.parmTemplateGroup()
-    ft = hou.FloatParmTemplate(name="display_size", label="Display Size", num_components= 1, min=0, max=10)
-    #tg.append(ft)
-    tg.insertBefore([0], ft)
-    arrow_subnet.setParmTemplateGroup(tg)
-    arrow_subnet.parm("display_size").set(0.5)
-    
-    tube_node = arrow_subnet.createNode("tube","tube_shape")
-    tube_node.parm("type").set(2)
-    tube_node.parm("ty").setExpression('ch("height")*.5')
-    tube_node.parmTuple("rad").set([0,1])
-    tube_node.parm("rows").set(2)
-    tube_node.parm("cols").set(4)
-    tube_node.parm("radscale").set(arrow_subnet.parm("display_size"))
-    tube_node.parm("height").set(arrow_subnet.parm("display_size"))    
-    
-    add_center = arrow_subnet.createNode("add","add_Center")
-    add_center.parm("usept0").set(1)
-
-    point_node = arrow_subnet.createNode("point")
-    point_node.parm("donml").set(1)
-    point_node.parmTuple("n").deleteAllKeyframes()
-    point_node.parmTuple("n").set([0,1,0])
-    point_node.setInput(0,add_center,0)
-
-    att_pc_rad = arrow_subnet.createNode("attribcreate", "attribcreate_pc_radius")
-    att_pc_rad.parm("name1").set("pc_radius")
-    att_pc_rad.parm("value1v1").setExpression('(ch("../../xform_arrow`opdigits(\'./..\')`/sx")+ch("../../xform_arrow`opdigits(\'./..\')`/sz"))/2')
-    att_pc_rad.setNextInput(point_node)
-
-    att_pscale = arrow_subnet.createNode("attribcreate", "attribcreate_pscale")
-    att_pscale.parm("name1").set("pscale")
-    att_pscale.parm("value1v1").setExpression('ch("../../xform_arrow`opdigits(\'./..\')`/sy")')
-    att_pscale.setNextInput(att_pc_rad)
-    
-    grp_node = arrow_subnet.createNode("group")
-    grp_node.parm("crname").set('pointer_`opdigits(".")`')
-    grp_node.parm("entity").set(1)
-    grp_node.setInput(0,att_pscale,0)
-
-    null_out_center = arrow_subnet.createNode("null", "Out_Center")
-    null_out_center.setInput(0,grp_node,0)
-
-    merge_node = arrow_subnet.createNode("merge")
-    merge_node.setNextInput(tube_node)
-    merge_node.setNextInput(null_out_center)
-
-    out_view = arrow_subnet.createNode("null", "Out_View")
-    out_view.setNextInput(merge_node)
-
-    out_view.setDisplayFlag(1)
-    out_view.setRenderFlag(1)
-
-    out_view.setDisplayFlag(1)
-    out_view.setRenderFlag(1)
-
-    arrow_subnet.layoutChildren()
-
-    trans_node = node.createNode("xform","xform_arrow1")
-    trans_node.parm("updatenmls").set(0)
-    trans_node.parmTuple("t").set(point.attribValue("P"))
-
-    n1 = hou.Vector3(0.0, 1.0, 0.0)
-    n2 = hou.Vector3(point.attribValue("N"))
-    
-    angle = hou.Vector3.matrixToRotateTo(n1, n2)
-    angle =  list(angle.extractRotates())
-    
-    trans_node.parmTuple("r").set(angle)
-    trans_node.setColor(color_node)
-    trans_node.setNextInput(arrow_subnet)
-    
-    connector.setNextInput(trans_node)
-
-    return arrow_subnet, trans_node
-
-
-for i in hou.selectedNodes():
-    c_comb(i)]]></script>
   </tool>
 
   <tool name="chop_hair0" label="Chop Hair" icon="NETWORKS_chop">
