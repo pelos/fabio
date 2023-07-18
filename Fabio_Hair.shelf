@@ -2388,7 +2388,7 @@ into the geometry.
             """)                       
 
             attribdelete = parent.createNode("attribdelete", "attribedelete_not_needed_for_rendering")
-            attribdelete.parm("ptdel").set("Cd crazyhair gluetoanimation guardhair rest restroot traillen whitehair tightness")
+            attribdelete.parm("ptdel").set("gluetoanimation rest restroot traillen tightness")
             attribdelete.parm("primdel").set("guideorigin restroot skinprim skinprimuv skinqueryP")
             attribdelete.parm("dtldel").set("myuv")
 
@@ -2514,7 +2514,7 @@ into the geometry.
 
 
 
-
+            print("adding image to bg")
             image(fabio_attributes)
 
 
@@ -2569,8 +2569,8 @@ def image(fabio_attibute):
 
                     editor.setBackgroundImages([image])
         except Exception as e :
-            pass
-            # print(e)
+            # pass
+            print(e)
 
             
                     
