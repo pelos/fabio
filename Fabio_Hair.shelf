@@ -17,7 +17,6 @@
     <memberTool name="shadow"/>
     <memberTool name="split2"/>
     <memberTool name="curve_example"/>
-    <memberTool name="fem2"/>
   </toolshelf>
 
   <tool name="hair_15" label="Hair 15" icon="SOP_wireblend">
@@ -334,7 +333,7 @@ for i in hou.selectedNodes():
     chop_hair(i)]]></script>
   </tool>
 
-  <tool name="fur" label="Fur Mantra 15" icon="opdef:/dk::Object/Fabio_Hair_System::1.11.02?fur_icon.png">
+  <tool name="fur" label="Fur Mantra 15" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?fur_icon.png">
     <helpText><![CDATA[for a given geometry will use the display node, 
 will create a line, and a copy sop with respective nulls Outs, 
 will drop a rfx_hair_system, and will conect it to the nulls Outs.]]></helpText>
@@ -342,142 +341,144 @@ will drop a rfx_hair_system, and will conect it to the nulls Outs.]]></helpText>
     for i in node_list:
         if i.type().nameComponents()[2] == "geo":
             for j in i.children():
-                if j.isDisplayFlagSet().conjugate() == 1:
-                    # Setting up the Geo guide curves needed for the hair system  --------------
-                    node_to_branch = j
-                    color_node = hou.Color((.5,.5,0))
-                    parent = node_to_branch.parent()
-                    nameing  = parent.name()
-                    ppos = parent.position()
-                    
-                    lvl = parent.parent()
-                    parent =lvl.createNode("geo", nameing +"_Grooming")
-                    try:
-                        parent.node("file1").destroy()
-                    except:
-                        pass
-                    parent.parm("vm_rendervisibility").set("")
-                    parent.setDisplayFlag(0)
-                    parent.setPosition([ppos[0], ppos[1]-1])
-                    
-                    om = parent.createNode("object_merge")
-                    om.parm("objpath1").set(om.relativePathTo(i))
-                    om.parm("xformtype").set(1)
-                    
-                    facet_node = parent.createNode("facet")
-                    facet_node.parm("prenml").set(1)
-                    facet_node.setInput(0,om,0)
+                print(type(j))
+                if type(j) == hou.SopNode:
+                    if j.isDisplayFlagSet() == 1:
+                        # Setting up the Geo guide curves needed for the hair system  --------------
+                        node_to_branch = j
+                        color_node = hou.Color((.5, .5, 0))
+                        parent = node_to_branch.parent()
+                        nameing  = parent.name()
+                        ppos = parent.position()
 
-                    null_skin_out = parent.createNode("null", "Out_Skin")
-                    null_skin_out.setColor(color_node)
-                    null_skin_out.setInput(0,facet_node,0)
-                    null_skin_out.setDisplayFlag(1)
-                    null_skin_out.setRenderFlag(1)
+                        lvl = parent.parent()
+                        parent =lvl.createNode("geo", nameing +"_Grooming")
+                        try:
+                            parent.node("file1").destroy()
+                        except:
+                            pass
+                        parent.parm("vm_rendervisibility").set("")
+                        parent.setDisplayFlag(0)
+                        parent.setPosition([ppos[0], ppos[1]-1])
 
-                    w_pscale = parent.createNode("pointwrangle","pointwrangle_pscale")
-                    w_pscale.parm("snippet").set("f@pscale = 1;")
-                    w_pscale.setNextInput(null_skin_out)
+                        om = parent.createNode("object_merge")
+                        om.parm("objpath1").set(om.relativePathTo(i))
+                        om.parm("xformtype").set(1)
 
+                        facet_node = parent.createNode("facet")
+                        facet_node.parm("prenml").set(1)
+                        facet_node.setInput(0,om,0)
 
-                    paint_node = parent.createNode("paint","paint_lenght")
-                    paint_node.parm("overridecd").set(1)
-                    paint_node.parm("cdname").set("pscale")
-                    paint_node.setNextInput(w_pscale)
+                        null_skin_out = parent.createNode("null", "Out_Skin")
+                        null_skin_out.setColor(color_node)
+                        null_skin_out.setInput(0,facet_node,0)
+                        null_skin_out.setDisplayFlag(1)
+                        null_skin_out.setRenderFlag(1)
+
+                        w_pscale = parent.createNode("pointwrangle","pointwrangle_pscale")
+                        w_pscale.parm("snippet").set("f@pscale = 1;")
+                        w_pscale.setNextInput(null_skin_out)
 
 
-                    comb_node = parent.createNode("comb","comb_paint_hair_direction")
-                    comb_node.bypass(1)
-                    comb_node.parm("opacity").set(0.1)
-                    comb_node.setNextInput(paint_node)
-
-                    timeshift_node = parent.createNode("timeshift")
-                    timeshift_node.parm("frame").setExpression("$FSTART")
-                    timeshift_node.setNextInput(comb_node)
-
-                    attorient_node = parent.createNode("attribreorient")
-                    attorient_node.parm("vattribs").set("N")
-                    attorient_node.setInput(0,null_skin_out,0)
-                    attorient_node.setInput(1,timeshift_node,0)
-
-                    att_copy_node = parent.createNode("attribcopy", "attribcopy_pscale")
-                    att_copy_node.parm("attrib").set(2)
-                    att_copy_node.parm("attribname").set("pscale")
-
-                    att_copy_node.setInput(0,attorient_node, 0)
-                    att_copy_node.setInput(1,timeshift_node, 0)
-
-                    scatter_node = parent.createNode("scatter")
-                    scatter_node.setInput(0,att_copy_node,0)
-                    try:
-                        scatter_node.parm("area").set(0)
-                    except:
-                        pass
-                    scatter_node.bypass(1)
-
-                    line_node = parent.createNode("line","line_guide_fur")
-                    line_node.parmTuple("dir").set([0,0,1])
-                    line_node.parm("points").set(5)
-                    line_node.parm("dist").set(0.2)
+                        paint_node = parent.createNode("paint","paint_lenght")
+                        paint_node.parm("overridecd").set(1)
+                        paint_node.parm("cdname").set("pscale")
+                        paint_node.setNextInput(w_pscale)
 
 
+                        comb_node = parent.createNode("comb","comb_paint_hair_direction")
+                        comb_node.bypass(1)
+                        comb_node.parm("opacity").set(0.1)
+                        comb_node.setNextInput(paint_node)
 
+                        timeshift_node = parent.createNode("timeshift")
+                        timeshift_node.parm("frame").setExpression("$FSTART")
+                        timeshift_node.setNextInput(comb_node)
 
-                    #Continue with parent code----------------
+                        attorient_node = parent.createNode("attribreorient")
+                        attorient_node.parm("vattribs").set("N")
+                        attorient_node.setInput(0,null_skin_out,0)
+                        attorient_node.setInput(1,timeshift_node,0)
 
-                    copy_node = parent.createNode("copy", "copy_for_fur")
-                    copy_node.setInput(0,line_node, 0)
-                    copy_node.setInput(1, scatter_node , 0)
-                    
-                    trail = parent.createNode("trail")
-                    trail.parm("result").set(3)
-                    trail.setInput(0, copy_node)                    
+                        att_copy_node = parent.createNode("attribcopy", "attribcopy_pscale")
+                        att_copy_node.parm("attrib").set(2)
+                        att_copy_node.parm("attribname").set("pscale")
 
-                    null_to_dops = parent.createNode("null", "Dops_Helper")
-                    null_to_dops.setNextInput(trail)
-                    null_to_dops.setColor(hou.Color((.25,.35,.5)))
+                        att_copy_node.setInput(0,attorient_node, 0)
+                        att_copy_node.setInput(1,timeshift_node, 0)
 
-                    null_guides_out = parent.createNode("null", "Out_Guides")
-                    null_guides_out.setColor(color_node)
-                    null_guides_out.setInput(0,null_to_dops,0)
+                        scatter_node = parent.createNode("scatter")
+                        scatter_node.setInput(0,att_copy_node,0)
+                        try:
+                            scatter_node.parm("area").set(0)
+                        except:
+                            pass
+                        scatter_node.bypass(1)
 
-                    delete_node = parent.createNode("delete")
-                    delete_node.parm("entity").set(0)
-                    delete_node.setInput(0, null_guides_out, 0)
-                    delete_node.parm("groupop").set(1)
-
-                    null_clumps_out = parent.createNode("null", "Out_Clumps")
-                    null_clumps_out.setInput(0, delete_node,0)
-                    null_clumps_out.setColor(color_node)
+                        line_node = parent.createNode("line","line_guide_fur")
+                        line_node.parmTuple("dir").set([0,0,1])
+                        line_node.parm("points").set(5)
+                        line_node.parm("dist").set(0.2)
 
 
 
-                    parent.layoutChildren()
 
-                    #----------------------------------------------
-                    # setting for making the hair system the upper level
-                    obj_pos = parent.position()
+                        #Continue with parent code----------------
 
-                    obj_pos_x = obj_pos[0]
-                    obj_pos_y = obj_pos[1]
+                        copy_node = parent.createNode("copy", "copy_for_fur")
+                        copy_node.setInput(0,line_node, 0)
+                        copy_node.setInput(1, scatter_node , 0)
 
-                    try:
-                        hair_system = parent.parent().createNode("Fabio_Hair_System", "Fabio_Hair_System_"+nameing)
-                    except:
-                        hair_system = parent.parent().createNode("test_Fabio_Hair_System", "test_Fabio_Hair_System_"+nameing)
+                        trail = parent.createNode("trail")
+                        trail.parm("result").set(3)
+                        trail.setInput(0, copy_node)
 
-                    hair_system.setPosition([obj_pos_x, obj_pos_y-1])
+                        null_to_dops = parent.createNode("null", "Dops_Helper")
+                        null_to_dops.setNextInput(trail)
+                        null_to_dops.setColor(hou.Color((.25,.35,.5)))
+
+                        null_guides_out = parent.createNode("null", "Out_Guides")
+                        null_guides_out.setColor(color_node)
+                        null_guides_out.setInput(0,null_to_dops,0)
+
+                        delete_node = parent.createNode("delete")
+                        delete_node.parm("entity").set(0)
+                        delete_node.setInput(0, null_guides_out, 0)
+                        delete_node.parm("groupop").set(1)
+
+                        null_clumps_out = parent.createNode("null", "Out_Clumps")
+                        null_clumps_out.setInput(0, delete_node,0)
+                        null_clumps_out.setColor(color_node)
 
 
-                    hair_system.parm("skin").set(hair_system.relativePathTo(null_skin_out))
-                    hair_system.parm("hair_guides").set(hair_system.relativePathTo(null_guides_out))
-                    hair_system.parm("clump_guides").set(hair_system.relativePathTo(null_clumps_out))
-                    
-                    hair_system.parm("full_interpolation").set(1)
+
+                        parent.layoutChildren()
+
+                        #----------------------------------------------
+                        # setting for making the hair system the upper level
+                        obj_pos = parent.position()
+
+                        obj_pos_x = obj_pos[0]
+                        obj_pos_y = obj_pos[1]
+
+                        try:
+                            hair_system = parent.parent().createNode("Fabio_Hair_System", "Fabio_Hair_System_"+nameing)
+                        except:
+                            hair_system = parent.parent().createNode("test_Fabio_Hair_System", "test_Fabio_Hair_System_"+nameing)
+
+                        hair_system.setPosition([obj_pos_x, obj_pos_y-1])
+
+
+                        hair_system.parm("skin").set(hair_system.relativePathTo(null_skin_out))
+                        hair_system.parm("hair_guides").set(hair_system.relativePathTo(null_guides_out))
+                        hair_system.parm("clump_guides").set(hair_system.relativePathTo(null_clumps_out))
+
+                        hair_system.parm("full_interpolation").set(1)
                     
 populate_hair( hou.selectedNodes() )]]></script>
   </tool>
 
-  <tool name="fur_comb" label="Fur Comb" icon="opdef:/dk::Object/Fabio_Hair_System::1.11.02?comb.png">
+  <tool name="fur_comb" label="Fur Comb" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?comb.png">
     <helpText><![CDATA[will create an ARROW, (point with normal and pscale) with a shape of a pyramid, 
 and connect a vopsop.
 
@@ -886,7 +887,7 @@ for i in hou.selectedNodes():
     chop_hair(i)]]></script>
   </tool>
 
-  <tool name="dops" label="Dops" icon="opdef:/dk::Object/Fabio_Hair_System::1.11.02?hair_dops.png">
+  <tool name="dops" label="Dops" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?hair_dops.png">
     <script scriptType="python"><![CDATA[def blend_position(position1, position2):
 
     # Code for /obj/sphere_object1_Grooming1/subnet1/pointvop1
@@ -1642,7 +1643,7 @@ def populate_hair(node_list):
 populate_hair( hou.selectedNodes() )]]></script>
   </tool>
 
-  <tool name="curve_example" label="Curve Example" icon="opdef:/dk::Object/Fabio_Hair_System::1.11.02?curve_tutorial.png">
+  <tool name="curve_example" label="Curve Example" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?curve_tutorial.png">
     <helpText><![CDATA[Will create a curve and will set one fabio to follow along.
 
 if nothing is selected will create a default line.  if a curve nodes are selected at Geo/Scene level  will do the setup for each one of them.
@@ -1961,7 +1962,7 @@ main()]]></script>
     <script scriptType="python"><![CDATA[]]></script>
   </tool>
 
-  <tool name="hair_current" label="Hair 16&gt;19" icon="opdef:/dk::Object/Fabio_Hair_System::1.11.01?IconImage">
+  <tool name="hair_current" label="Hair 16&gt;19" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?IconImage">
     <script scriptType="python"><![CDATA[import vexpressionmenu 
 
 purple_color = hou.Color((0.565, 0.494, 0.863))
