@@ -1116,7 +1116,7 @@ def fem_function(node_to_connect, node_to_output):
     import_point = attribvop_node.createNode("importpoint")
     import_point.parm("opinput").set("opinput:1")
 
-    mix = attribvop_node.createNode("colormix")
+    mix = attribvop_node.createNode("mix")
     mix.setInput(0, geometry_global_node, 0)
     mix.setInput(1, import_point, 0)
     mix.setInput(2, ramp_mix, 0)
