@@ -1935,45 +1935,54 @@ def populate_hair(node_list):
             rest_curves.setPosition( [-5.76004, -3.62106])
 
 
-            
-            point_wrangler_width = parent.createNode("attribwrangle", "pointwrangle_width_if_needed")
-            point_wrangler_width.parm("class").set(2)
-            point_wrangler_width.parm("snippet").set('''
-int ammo = `chs("../subnet_for_grooming/guidedraw_create_guides/outputsegs")`;
-float mod = (@ptnum % ammo)+1;
-float perc = mod/ammo;
+            attribcreate_width_node = parent.createNode("attribcreate", "attribcreate_width")
+            attribcreate_width_node.parm("name1").set("width")
+            attribcreate_width_node.parmTuple("default1v").set([0.05, 0,0,0])
+            attribcreate_width_node.parmTuple("value1v").set([0.05, 0,0,0])
+            attribcreate_width_node.setInput(0, rest_curves, 0)
+            attribcreate_width_node.setPosition([-5.76304, -4.55499])
 
-float ramper = chramp("width_ramp", 1) * ch("width_scale",.025);
-@width = perc * ramper;            
-            ''')
-            point_wrangler_width.setInput(0, rest_curves, 0)
-            point_wrangler_width.setPosition([-5.76304, -4.55499])            
-            point_wrangler_width.setColor(hou.Color([.6,.6,.6]))
-                                   
-            vexpressionmenu.createSpareParmsFromChCalls(point_wrangler_width, 'snippet')
-#            print("about to cook")
-#            point_wrangler_width.cook(force=True)
-            point_wrangler_width.parm("width_scale").set(.025)
-            
-            ramp_point_wrangler_width = point_wrangler_width.parm('width_ramp')
- 
-            bases =  [hou.rampBasis.Linear] * 3
-            keys =   [0.0, 0.75, 1]
-            values = [1.0, 1.0, .1]
-            ramp_point_wrangler_width.set(hou.Ramp(bases, keys, values))
-                        
-            point_wrangler_width_stiky = parent.createStickyNote("my_sticky")
-            point_wrangler_width_stiky.setText("""pointwrangle_width
-'width' for hair collision while simulating; 
-attribute use for Karma/Mantra in case you want to render directly from
-_Grooming object curves and not use the Fabio hda(fabio will let you set the
-width for hairs, clumbs, crazy, guards independenlty)
-'hairgen1' node also set the attribute
-you can byass one or the other, no need to recompute twice, so you can by pass one or the other
-            """)
-            wp = point_wrangler_width.position()
-            point_wrangler_width_stiky.setPosition([ wp[0]-2, wp[1]-3 ]  )
-            point_wrangler_width_stiky.setColor(hou.Color([.6,.6,.6]))
+# we changing all this code for attribute create,  that way we dont need to know how many points per curve
+#             point_wrangler_width = parent.createNode("attribwrangle", "pointwrangle_width_if_needed")
+#             point_wrangler_width.parm("class").set(2)
+#             point_wrangler_width.parm("snippet").set('''
+# int ammo = `chs("../subnet_for_grooming/guidedraw_create_guides/outputsegs")`;
+# float mod = (@ptnum % ammo)+1;
+# float perc = mod/ammo;
+#
+# float ramper = chramp("width_ramp", 1) * ch("width_scale",.025);
+# @width = perc * ramper;
+#             ''')
+#             point_wrangler_width.setInput(0, rest_curves, 0)
+#             point_wrangler_width.setPosition([-5.76304, -4.55499])
+#             point_wrangler_width.setColor(hou.Color([.6,.6,.6]))
+#
+#             vexpressionmenu.createSpareParmsFromChCalls(point_wrangler_width, 'snippet')
+# #            print("about to cook")
+# #            point_wrangler_width.cook(force=True)
+#             point_wrangler_width.parm("width_scale").set(.025)
+#
+#             ramp_point_wrangler_width = point_wrangler_width.parm('width_ramp')
+#
+#             bases =  [hou.rampBasis.Linear] * 3
+#             keys =   [0.0, 0.75, 1]
+#             values = [1.0, 1.0, .1]
+#             ramp_point_wrangler_width.set(hou.Ramp(bases, keys, values))
+#
+#             point_wrangler_width_stiky = parent.createStickyNote("my_sticky")
+#             point_wrangler_width_stiky.setText("""pointwrangle_width
+# 'width' for hair collision while simulating;
+# attribute use for Karma/Mantra in case you want to render directly from
+# _Grooming object curves and not use the Fabio hda(fabio will let you set the
+# width for hairs, clumbs, crazy, guards independenlty)
+# 'hairgen1' node also set the attribute
+# you can byass one or the other, no need to recompute twice, so you can by pass one or the other
+#             """)
+#             wp = point_wrangler_width.position()
+#             point_wrangler_width_stiky.setPosition([ wp[0]-2, wp[1]-3 ]  )
+#             point_wrangler_width_stiky.setColor(hou.Color([.6,.6,.6]))
+#
+
 
             
             point_attibs_stiky = parent.createStickyNote("shader_points_attribs")
@@ -2017,7 +2026,7 @@ fake_max_on_hair_shader_mult float
             uv_fabio.parm("type").set(8)
             uv_fabio.parm("coord").set(1)
             uv_fabio.setColor(purple_color)            
-            uv_fabio.setInput(0, point_wrangler_width, 0)
+            uv_fabio.setInput(0, attribcreate_width_node, 0)
             uv_fabio.setPosition([-5.76004, -5.33954])
             # uv_fabio.bypass(False)
                                     
