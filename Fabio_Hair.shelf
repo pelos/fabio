@@ -1937,8 +1937,8 @@ def populate_hair(node_list):
 
             attribcreate_width_node = parent.createNode("attribcreate", "attribcreate_width")
             attribcreate_width_node.parm("name1").set("width")
-            attribcreate_width_node.parmTuple("default1v").set([0.05, 0,0,0])
-            attribcreate_width_node.parmTuple("value1v").set([0.05, 0,0,0])
+            attribcreate_width_node.parmTuple("default1v").set([0.005, 0, 0, 0])
+            attribcreate_width_node.parmTuple("value1v").set([0.005, 0, 0, 0])
             attribcreate_width_node.setInput(0, rest_curves, 0)
             attribcreate_width_node.setPosition([-5.76304, -4.55499])
 
