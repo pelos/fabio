@@ -950,7 +950,7 @@ if selection != 2:
             subnet_dops.layoutChildren()
 
 
-            # todo dont remeber why was this for,  i think if for v15 were ungided hair was done by the lines
+            # todo dont remember why was this for,  i think if for v15 were unguided hair was done by the lines
             # now in 19 is dont by normal, or the furdirection attibute (that are vectors)
             '''
             # if we are using long hair, add this to the vops sop.    
