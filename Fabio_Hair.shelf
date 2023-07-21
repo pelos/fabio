@@ -2262,8 +2262,8 @@ into the geometry.
 
 
 
-            print("adding image to bg")
-            image(fabio_attributes)
+            # print("adding image to bg")
+            # image(fabio_attributes)
 
 
 def add_fur_nodes(parent):
@@ -2317,8 +2317,8 @@ def image(fabio_attibute):
 
                     editor.setBackgroundImages([image])
         except Exception as e :
-            # pass
-            print(e)
+            pass
+            # print(e)
 
             
                     
