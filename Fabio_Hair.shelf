@@ -1088,25 +1088,6 @@ def fem_function(node_to_connect, node_to_output):
     uv_fabio.parm("uvattrib").set("uv_fabio")
     uv_fabio.setName("uvcoords_fabio")
 
-    # inttofloat1 = attribvop_node.createNode("inttofloat")
-    # inttofloat1.setInput(0, geometry_global_node, 12)
-
-    # parm_points_per_line = attribvop_node.createNode("parameter")
-    # parm_points_per_line.parm("parmname").set("num_points_per_line")
-    # parm_points_per_line.parm("parmlabel").set("Num Points Per Line")
-    # parm_points_per_line.parm("parmtype").set(1)
-
-    # add_constant = attribvop_node.createNode("addconst")
-    # add_constant.setInput(0, parm_points_per_line, 0)
-
-    # modulo = attribvop_node.createNode("modulo")
-    # modulo.setInput(0, inttofloat1, 0)
-    # modulo.setInput(1, add_constant, 0)
-
-    # divide = attribvop_node.createNode("divide")
-    # divide.setInput(0, modulo, 0)
-    # divide.setInput(1, add_constant, 0)
-
     ramp_mix = attribvop_node.createNode("rampparm", "ramp_lag_per_line")
     ramp_mix.parm("parmname").set("ramp_mix")
     ramp_mix.parm("parmlabel").set("Ramp mix")
@@ -1132,38 +1113,38 @@ def fem_function(node_to_connect, node_to_output):
     output = parent.createNode("output")
     output.setInput(0, attribvop_node, 0)
     # ----------------------
-    stifness_snippet = """
-float ammo = npoints(0)-1;  // total points
-float mod = (@ptnum/ammo); // the percentage 0 to 1
-float ramper = chramp("ramper", mod);
-float scaler = chf("scaler", 1);
-@stiffness = set(ramper * scaler);
-    """
-    begin_stiff, end_stiff, attibwrangler_stiff = foreach_curve_snippet(parent,
-                                                                        name="stiffness",
-                                                                        snippet=stifness_snippet,
-                                                                        )
-    for i_stiff in [begin_stiff, end_stiff, attibwrangler_stiff]:
-        i_stiff.bypass(1)
+#     stifness_snippet = """
+# float ammo = npoints(0)-1;  // total points
+# float mod = (@ptnum/ammo); // the percentage 0 to 1
+# float ramper = chramp("ramper", mod);
+# float scaler = chf("scaler", 1);
+# @stiffness = set(ramper * scaler);
+#     """
+#     begin_stiff, end_stiff, attibwrangler_stiff = foreach_curve_snippet(parent,
+#                                                                         name="stiffness",
+#                                                                         snippet=stifness_snippet,
+#                                                                         )
+    # for i_stiff in [begin_stiff, end_stiff, attibwrangler_stiff]:
+    #     i_stiff.bypass(1)
 
-    begin_stiff.setInput(0, parent.indirectInputs()[0])
+    # begin_stiff.setInput(0, parent.indirectInputs()[0])
 
-    stiff_sticky = parent.createStickyNote("stiff")
-    stiff_sticky.setText("""
-    if you want to control the stiffness by the length of the curve
-    by pass the for loop and click create parameters in te attibuteWrangler
-    """)
-
-    stiff_sticky.setPosition([-14.8266, 13.8159])
-    stiff_sticky.setSize([7.75327, 1.3691])
-    stiff_sticky.setColor(green_color)
+    # stiff_sticky = parent.createStickyNote("stiff")
+    # stiff_sticky.setText("""
+    # if you want to control the stiffness by the length of the curve
+    # by pass the for loop and click create parameters in te attibuteWrangler
+    # """)
+    #
+    # stiff_sticky.setPosition([-14.8266, 13.8159])
+    # stiff_sticky.setSize([7.75327, 1.3691])
+    # stiff_sticky.setColor(green_color)
 
     resample = parent.createNode("resample")
     resample.parm("dolength").set(0)
     resample.parm("dosegs").set(1)
     resample.parm("segs").set(50)
     resample.bypass(1)
-    resample.setInput(0, end_stiff, 0)
+    resample.setInput(0, parent.indirectInputs()[0], 0)
 
     metaball = parent.createNode("metaball")
     metaball.parmTuple("rad").set([.05, .05, .05])
@@ -1197,6 +1178,7 @@ float scaler = chf("scaler", 1);
     timeshift.setInput(0, color0, 0)
 
     convert = parent.createNode("convert")
+    
     convert.parm("lodu").set(1.55)
     convert.setInput(0, timeshift, 0)
 
@@ -1221,19 +1203,19 @@ float for_roots = @Cd.r>0.5;
     """)
     pointwrangle_color_to_root.setInput(0, attrib_transfer0, 0)
 
-    color_to_see_stiffness = parent.createNode("color", "color_to_viz_stiffness")
-    color_to_see_stiffness.parmTuple("color").set([0, 0, 1])
-    color_to_see_stiffness.setInput(0, resample)
+    # color_to_see_stiffness = parent.createNode("color", "color_to_viz_stiffness")
+    # color_to_see_stiffness.parmTuple("color").set([0, 0, 1])
+    # color_to_see_stiffness.setInput(0, resample)
 
-    attrib_transfer_stiff = parent.createNode("attribtransfer", "attribtransfer_stiffness")
-    attrib_transfer_stiff.parm("pointattriblist").set("stiffness Cd")
-    attrib_transfer_stiff.parm("thresholddist").set(0.05)
-    attrib_transfer_stiff.parm("blendwidth").set(0)
-    attrib_transfer_stiff.setInput(0, pointwrangle_color_to_root, 0)
-    attrib_transfer_stiff.setInput(1, color_to_see_stiffness, 0)
+    # attrib_transfer_stiff = parent.createNode("attribtransfer", "attribtransfer_stiffness")
+    # attrib_transfer_stiff.parm("pointattriblist").set("stiffness Cd")
+    # attrib_transfer_stiff.parm("thresholddist").set(0.05)
+    # attrib_transfer_stiff.parm("blendwidth").set(0)
+    # attrib_transfer_stiff.setInput(0, pointwrangle_color_to_root, 0)
+    # attrib_transfer_stiff.setInput(1, color_to_see_stiffness, 0)
 
     solid = parent.createNode("solidembed")
-    solid.setInput(0, attrib_transfer_stiff, 0)
+    solid.setInput(0, pointwrangle_color_to_root, 0)
     solid.parm("elementscale").set(0.3)
 
     solid_sticky = parent.createStickyNote("solid_note")
