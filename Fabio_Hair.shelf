@@ -2252,7 +2252,7 @@ def add_fur_nodes(parent):
     line = parent.createNode("line")
     line.parmTuple("dir").set([0,0,1])
     line.parm("dist").set(0.05)
-    line.parm("points").set(3)
+    line.parm("points").set(4)
 
     group_root = parent.createNode("groupcreate", "group_root")
     group_root.parm("groupname").set("roots")
