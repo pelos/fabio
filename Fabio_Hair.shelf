@@ -779,12 +779,14 @@ if selection != 2:
                                     "selfcollisionallowed"]
             elif selection == 1:  # vellum
                 list_of_dop_parms = ["mass",
-                                     "pscale",
+                                     "width",
                                      "stretchstiffness",
                                      "stretchdamping",
                                      "bendstiffness",
                                      "benddamping",
                                      "breakthresholdscale",
+                                     "pscale"
+                                     # "disableexternal"
                                      ]
             
             vop_globals = vopsop_dop.node("global1")
@@ -831,13 +833,18 @@ if selection != 2:
         
                 if z == "nocollide" or z == "selfcollisionallowed" or  z == "gluetoanimation":
                     bind_parm.setInput(0,ramp_parm,0)
-        
+
+                # if z == "disableexternal":
+                #     disableexternal_ramp = hou.Ramp((cons,cons), (0,.2), (1,0))
+                #     vopsop_dop.parm("ramp_"+z).set(disableexternal_ramp)
+                #     bind_parm.setInput(0, ramp_parm, 0)
+
                 else:
                     cons_parm = vopsop_dop.createNode("parameter")
                     cons_parm.parm("parmname").set(z+"_mult")
                     cons_parm.parm("parmlabel").set(z+" Mult")
                     if z == "pscale":                    
-                        cons_parm.parm("floatdef").set(0.01)
+                        cons_parm.parm("floatdef").set(0.0025)
                     else:
                         cons_parm.parm("floatdef").set(1)
                     
@@ -861,10 +868,10 @@ if selection != 2:
                 wireobject_node.parm("animategeom").set(1)
                 wireobject_node.parm("usetransform").set(1)
             
-                wireobject_node.parm("klinear").set(5000)
-                wireobject_node.parm("damplinear").set(50)
-                wireobject_node.parm("kangular").set(.1)
-                wireobject_node.parm("dampangular").set(.01)
+                wireobject_node.parm("klinear").set(.25)
+                wireobject_node.parm("damplinear").set(.001)
+                wireobject_node.parm("kangular").set(.001)
+                wireobject_node.parm("dampangular").set(.00001)
             
                 wire_solver = dopnet_node.createNode("wiresolver")
                 wire_solver.setInput(0, wireobject_node, 0)
@@ -904,7 +911,7 @@ if selection != 2:
                 dopimport_node.setPosition([dop_helper_null.position()[0], dop_helper_null.position()[1] - 1])
                 dopimport_node.parm("doppath").set(dopimport_node.relativePathTo(dopnet_node))
                 dopimport_node.parm("objpattern").set(wireobject_node.name())
-                dopimport_node.parm("importstyle").set(1)
+                dopimport_node.parm("importstyle").set(0)
                 dopimport_node.setColor(hou.Color([0.765, 1, 0.576]))
 
                 attrib_blend = blend_position(subnet_dops.indirectInputs()[0], dopimport_node)
@@ -921,13 +928,23 @@ if selection != 2:
                 output.setPosition([0.00345, -1.20029])
 
             if selection == 1:  # vellum
+
+
+                atribute_create_disableexternal = subnet_dops.createNode("attribcreate", "attribcreate_disableexternal")
+                atribute_create_disableexternal.parm("group").set("roots")
+                atribute_create_disableexternal.parm("name1").set("disableexternal")
+                atribute_create_disableexternal.parm("default1v1").set(0)
+                atribute_create_disableexternal.parm("value1v1").set(1)
+                atribute_create_disableexternal.setInput(0, vopsop_dop, 0)
+
+
                 subnet_dops.setColor(hou.Color([0.38, 0.408, 0.553]))
                 vopsop_dop.setColor(hou.Color([0.38, 0.408, 0.553]))
                 vellum_contrain_node = subnet_dops.createNode("vellumconstraints", "vellum_hair_fabio")
                 vellum_contrain_node.parm("constrainttype").set(4)
                 vellum_contrain_node.parm("pingroup").set("roots")            
                 vellum_contrain_node.parm("matchanimation").set(1)
-                vellum_contrain_node.setInput(0, vopsop_dop, 0)
+                vellum_contrain_node.setInput(0, atribute_create_disableexternal, 0)
                 vellum_contrain_node.setInput(2, subnet_dops.indirectInputs()[1], 0)
                 vellum_contrain_node.setPosition([dop_helper_null.position()[0], dop_helper_null.position()[1]-.75  ])
                 
