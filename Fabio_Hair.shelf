@@ -325,7 +325,7 @@ for i in hou.selectedNodes():
     chop_hair(i)]]></script>
   </tool>
 
-  <tool name="fur" label="Fur Mantra 15" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?fur_icon.png">
+  <tool name="fur" label="Fur Mantra 15" icon="opdef:/Object/fabio_hair_system?fur_icon.png">
     <helpText><![CDATA[for a given geometry will use the display node, 
 will create a line, and a copy sop with respective nulls Outs, 
 will drop a rfx_hair_system, and will conect it to the nulls Outs.]]></helpText>
@@ -625,7 +625,7 @@ for i in hou.selectedNodes():
     chop_hair(i)]]></script>
   </tool>
 
-  <tool name="dops" label="Dops" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?hair_dops.png">
+  <tool name="dops" label="Dops" icon="opdef:/Object/fabio_hair_system??hair_dops.png">
     <script scriptType="python"><![CDATA[def blend_position(position1, position2):
 
     # Code for /obj/sphere_object1_Grooming1/subnet1/pointvop1
@@ -1380,7 +1380,7 @@ def populate_hair(node_list):
 populate_hair( hou.selectedNodes() )]]></script>
   </tool>
 
-  <tool name="curve_example" label="Curve Example" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?curve_tutorial.png">
+  <tool name="curve_example" label="Curve Example" icon="opdef:/Object/fabio_hair_system?curve_tutorial.png">
     <helpText><![CDATA[Will create a curve and will set one fabio to follow along.
 
 if nothing is selected will create a default line.  if a curve nodes are selected at Geo/Scene level  will do the setup for each one of them.
@@ -1699,7 +1699,7 @@ main()]]></script>
     <script scriptType="python"><![CDATA[]]></script>
   </tool>
 
-  <tool name="hair_current" label="Hair 16&gt;19" icon="opdef:/dk::Object/Fabio_Hair_System::1.12.02?IconImage">
+  <tool name="hair_current" label="Hair 16&gt;19" icon="opdef:/Object/fabio_hair_system?IconImage">
     <script scriptType="python"><![CDATA[import vexpressionmenu 
 
 purple_color = hou.Color((0.565, 0.494, 0.863))
@@ -2232,7 +2232,7 @@ into the geometry.
             obj_pos_x = obj_pos[0]
             obj_pos_y = obj_pos[1]
             # nameing  = parent.name()
-            hair_system = parent.parent().createNode("Fabio_Hair_System", "Fabio_Hair_System_"+nameing)
+            hair_system = parent.parent().createNode("fabio_hair_system", "Fabio_Hair_System_"+nameing)
             hair_system.setPosition([obj_pos_x, obj_pos_y-1])
             # hair_system.parm("skin").set(hair_system.relativePathTo(out_skin_node))
             hair_system.parm("skin").set(hair_system.relativePathTo(guidedeform_node)+"/output3")
