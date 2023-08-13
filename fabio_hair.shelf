@@ -13,7 +13,6 @@
     <memberTool name="dops"/>
     <memberTool name="chop_hair0"/>
     <memberTool name="fem"/>
-    <memberTool name="shadow"/>
     <memberTool name="split2"/>
     <memberTool name="curve_example"/>
   </toolshelf>
@@ -1346,38 +1345,6 @@ for i in hou.selectedNodes():
 
     else:
         hou.ui.displayMessage("Select the grooming node with the 'To_Dops' null")]]></script>
-  </tool>
-
-  <tool name="shadow" label="Shadow" icon="VOPNET_shadow">
-    <script scriptType="python"><![CDATA[
-def populate_hair(node_list):
-    for i in node_list:
-        if i.type().nameComponents()[2] == "Fabio_Hair_System":
-            parent = i.parent()
-            i.parm("vm_rendervisibility").set("primary")
-            posx, posy = i.position()
-            node_name = i.name()
-            if "Fabio_Hair_System" in node_name:
-                node_name = node_name.replace("Fabio_Hair_System", "Fabio_Hair_Shadow")
-            else:
-                node_name = node_name + "Fabio_Hair_Shadow"                
-            shadow_node = parent.createNode("Fabio_Hair_System_Shadow", node_name)
-            shadow_node.setPosition([posx+1, posy-.5])
-            shadow_node.setColor(hou.Color([.478, .478, .478]))
-            
-            hair_out = i.node("Hair_Master/Out")            
-            
-            shadow_node.parm("hair_curves_in").set(shadow_node.relativePathTo(hair_out ) )
-            
-            parm_list = ["reflectmask", "refractmask", "lightmask", "shadowmask", "vm_matte", "vm_rayshade"]
-            
-            for parm in parm_list:
-                shadow_node.parm(parm).set(i.parm(parm))
-        else:
-            hou.ui.displayMessage("This is not a fabio hair node")
-#            print "This is not a fabio hair node"
-                    
-populate_hair( hou.selectedNodes() )]]></script>
   </tool>
 
   <tool name="curve_example" label="Curve Example" icon="opdef:/Object/fabio_hair_system?curve_tutorial.png">
