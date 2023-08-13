@@ -1,0 +1,2293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shelfDocument>
+  <!-- This file contains definitions of shelves, toolbars, and tools.
+ It should not be hand-edited when it is being used by the application.
+ Note, that two definitions of the same element are not allowed in
+ a single file. -->
+
+  <toolshelf name="fabio_hair" label="Fabio_Hair">
+    <memberTool name="fur"/>
+    <memberTool name="hair_15"/>
+    <memberTool name="split1"/>
+    <memberTool name="hair_current"/>
+    <memberTool name="dops"/>
+    <memberTool name="chop_hair0"/>
+    <memberTool name="fem"/>
+    <memberTool name="split2"/>
+    <memberTool name="curve_example"/>
+  </toolshelf>
+
+  <tool name="hair_15" label="Hair 15" icon="SOP_wireblend">
+    <script scriptType="python"><![CDATA[def populate_hair(node_list):
+    for i in node_list:
+        if i.type().nameComponents()[2] == "geo":
+            for j in i.children():
+                if type(j) == hou.SopNode:
+                    if j.isDisplayFlagSet() == 1:
+
+                        # Setting up the Geo guide curves needed for the hair system  --------------
+                        node_to_branch = j
+                        color_node = hou.Color((.5, .5, 0))
+                        parent = node_to_branch.parent()
+                        nameing = parent.name()
+                        ppos = parent.position()
+
+                        lvl = parent.parent()
+                        parent = lvl.createNode("geo", nameing + "_Grooming")
+                        try:
+                            parent.node("file1").destroy()
+                        except:
+                            pass
+                        parent.parm("vm_rendervisibility").set("")
+                        parent.setDisplayFlag(0)
+                        parent.setPosition([ppos[0], ppos[1] - 1])
+
+                        om = parent.createNode("object_merge")
+                        om.parm("objpath1").set(om.relativePathTo(i))
+                        om.parm("xformtype").set(1)
+
+                        null_skin_out = parent.createNode("null", "geometry_in")
+                        null_skin_out.setColor(color_node)
+                        null_skin_out.setInput(0, om, 0)
+                        null_skin_out.setDisplayFlag(1)
+                        null_skin_out.setRenderFlag(1)
+
+                        # subnet_geo_deformation = parent.createNode("subnet", "subnet_geo_deformation")
+                        # subnet_geo_deformation.setInput(0, null_skin_out)
+                        # subnet_geo_deformation.bypass(1)
+
+                        attrib_fur_density = parent.createNode("attribcreate", "attribcreate_fur_density")
+                        attrib_fur_density.parm("name1").set("furdensity")
+                        attrib_fur_density.setInput(0, null_skin_out)
+                        attrib_fur_density.bypass(1)
+
+                        paint_fur_density = parent.createNode("paint", "paint_fur_density")
+                        paint_fur_density.parm("overridecd").set(1)
+                        paint_fur_density.parm("cdname").set("furdensity")
+                        paint_fur_density.setInput(0, attrib_fur_density)
+                        paint_fur_density.bypass(1)
+
+                        null_skin_out = parent.createNode("null", "Out_Skin")
+                        null_skin_out.setColor(color_node)
+                        null_skin_out.setInput(0, paint_fur_density, 0)
+
+                        group_edges = parent.createNode("group", "group_edges")
+                        group_edges.parm("groupnumber").set(0)
+                        group_edges.parm("groupedges").set(1)
+                        group_edges.parm("unshared").set(1)
+                        group_edges.parm("crname").set("open")
+                        group_edges.setInput(0, null_skin_out)
+
+                        polycap = parent.createNode("polycap")
+                        polycap.parm("group").set("open")
+                        polycap.setInput(0, group_edges)
+
+                        vdb_from_poly = parent.createNode("vdbfrompolygons")
+                        vdb_from_poly.parm("voxelsize").set(0.035)
+                        vdb_from_poly.parm("useworldspaceunits").set(1)
+                        vdb_from_poly.parm("exteriorband").set(0.1)
+                        vdb_from_poly.parm("fillinterior").set(1)
+                        vdb_from_poly.setInput(0, polycap)
+
+                        #                    dhguides = parent.createNode("drawhairguides")
+                        dhguides = parent.createNode("guidedraw", "guidedraw_create_guides")
+                        dhguides.parm("scalpvoxelsize").set(0.15)
+                        dhguides.parm("outputsegs").set(10)
+                        dhguides.setInput(1, null_skin_out)
+                        dhguides.setInput(2, vdb_from_poly)
+
+                        curvegroom = parent.createNode("guidegroom", "guidegroom_shape_curves")
+
+                        curvegroom.parm("segments").set(dhguides.parm("outputsegs"))
+                        curvegroom.setInput(0, dhguides)
+                        curvegroom.setInput(1, null_skin_out)
+                        curvegroom.setInput(2, vdb_from_poly)
+
+                        attrib_len = parent.createNode("attribcreate", "attribcreate_len")
+                        attrib_len.parm("name1").set("lenn")
+                        attrib_len.parm("varname1").set("LENN")
+                        attrib_len.parm("class1").set(1)
+                        attrib_len.parm("value1v1").setExpression('arclen(opinputpath(".",0), $PR,0,1)')
+                        attrib_len.parm("createvarmap1").set(1)
+                        attrib_len.bypass(1)
+                        attrib_len.setInput(0, curvegroom)
+
+                        group_by_len = parent.createNode("group", "group_view_curves_by_len")
+                        group_by_len.parm("filter").setExpression("$LENN<.05")
+                        group_by_len.parm("groupop").set(2)
+                        group_by_len.bypass(1)
+                        group_by_len.setInput(0, attrib_len)
+
+                        del_by_len = parent.createNode("delete", "delete_by_len")
+                        del_by_len.parm("groupop").set(2)
+                        del_by_len.parm("filter").setExpression("$LENN<.05")
+                        del_by_len.bypass(1)
+                        del_by_len.setInput(0, attrib_len)
+
+                        #                    subnet_hair_deformation = parent.createNode("subnet", "subnet_hair_deformation")
+                        #                    subnet_hair_deformation.setInput(0, del_by_len)
+                        curves_attatch_to_geo = parent.createNode("curves_attatch_to_geometry")
+                        curves_attatch_to_geo.setInput(0, del_by_len)
+                        curves_attatch_to_geo.setInput(1, null_skin_out)
+
+                        # Continue with parent code----------------
+
+                        trail = parent.createNode("trail")
+                        trail.parm("result").set(3)
+                        trail.setInput(0, curves_attatch_to_geo)
+
+                        null_to_dops = parent.createNode("null", "Dops_Helper")
+                        null_to_dops.setNextInput(trail)
+                        null_to_dops.setColor(hou.Color((.25, .35, .5)))
+
+                        null_guides_out = parent.createNode("null", "Out_Guides")
+                        null_guides_out.setColor(color_node)
+                        null_guides_out.setInput(0, null_to_dops, 0)
+
+                        delete_node = parent.createNode("delete")
+                        delete_node.parm("entity").set(0)
+                        delete_node.setInput(0, null_guides_out, 0)
+                        delete_node.parm("groupop").set(1)
+
+                        null_clumps_out = parent.createNode("null", "Out_Clumps")
+                        null_clumps_out.setInput(0, delete_node, 0)
+                        null_clumps_out.setColor(color_node)
+
+                        parent.layoutChildren()
+
+                        # ----------------------------------------------
+                        # setting for making the hair system the upper level
+                        obj_pos = parent.position()
+
+                        obj_pos_x = obj_pos[0]
+                        obj_pos_y = obj_pos[1]
+                        # nameing  = parent.name()
+
+                        hair_system = parent.parent().createNode("Fabio_Hair_System", "Fabio_Hair_System_" + nameing)
+
+                        hair_system.setPosition([obj_pos_x, obj_pos_y - 1])
+
+                        hair_system.parm("skin").set(hair_system.relativePathTo(null_skin_out))
+                        hair_system.parm("hair_guides").set(hair_system.relativePathTo(null_guides_out))
+                        hair_system.parm("clump_guides").set(hair_system.relativePathTo(null_clumps_out))
+
+                        hair_system.parm("full_interpolation").set(1)
+
+
+populate_hair(hou.selectedNodes())
+]]></script>
+  </tool>
+
+  <tool name="chop_hair" label="Chop Hair" icon="NETWORKS_chop">
+    <script scriptType="python"><![CDATA[def chop_hair(hou_parent):
+
+    to_dops = hou_parent.node("Dops_Helper")
+    before_to_dops = to_dops.inputs()[0]
+    subnet_lag_chops = hou_parent.createNode("subnet", "subnet_lag_chops")
+    subnet_lag_chops.setInput(0, before_to_dops, 0)
+    subnet_lag_chops.setColor(hou.Color([0.89, 0.412, 0.761]))
+    to_dops.setInput(0, subnet_lag_chops, 0)
+
+    brdp = before_to_dops.position()
+    tdp = to_dops.position()
+    subnet_lag_chops.setPosition([(brdp[0]+tdp[0])/2, (brdp[1]+tdp[1])/2])
+        
+    null_for_chops = subnet_lag_chops.createNode("null", "For_chops")
+    null_for_chops.setInput(0, subnet_lag_chops.indirectInputs()[0], 0)
+        
+    channel = subnet_lag_chops.createNode("channel")
+    channel.parm("choppath").set("../chopnet1/Out")
+    channel.parm("method").set(1)
+    channel.setInput(0, null_for_chops, 0)
+    
+    
+    # Code for /obj/sphere_object1_Grooming1/subnet1/pointvop1
+    attribvop_node = subnet_lag_chops.createNode("attribvop", "attribvop_blend_position")
+    attribvop_node.setInput(0, null_for_chops, 0)
+    attribvop_node.setInput(1, channel, 0)
+    geometry_global_node = attribvop_node.node("geometryvopglobal1")
+    geometry_output_node = attribvop_node.node("geometryvopoutput1")
+    
+    inttofloat1 = attribvop_node.createNode("inttofloat")
+    inttofloat1.setInput(0, geometry_global_node, 12)
+    
+    parm_points_per_line = attribvop_node.createNode("parameter")
+    parm_points_per_line.parm("parmname").set("num_points_per_line")
+    parm_points_per_line.parm("parmlabel").set("Num Points Per Line")
+    parm_points_per_line.parm("parmtype").set(1)
+        
+    add_constant = attribvop_node.createNode("addconst")
+    add_constant.setInput(0, parm_points_per_line, 0)
+    
+    modulo = attribvop_node.createNode("modulo")
+    modulo.setInput(0, inttofloat1, 0)
+    modulo.setInput(1, add_constant, 0)    
+        
+    divide = attribvop_node.createNode("divide")
+    divide.setInput(0, modulo, 0)
+    divide.setInput(1, add_constant, 0)
+
+    ramp_mix = attribvop_node.createNode("rampparm", "ramp_lag_per_line")
+    ramp_mix.parm("parmname").set("ramp_mix")
+    ramp_mix.parm("parmlabel").set("Ramp mix")
+    ramp_mix.parm("ramptype").set(1)
+    ramp_mix.setInput(0, divide, 0)
+    
+    import_point = attribvop_node.createNode("importpoint")
+    import_point.parm("opinput").set("opinput:1")
+    
+    mix = attribvop_node.createNode("colormix")
+    mix.setInput(0, geometry_global_node, 0)
+    mix.setInput(1, import_point, 0)
+    mix.setInput(2, ramp_mix, 0)
+    
+    geometry_output_node.setInput(0, mix, 0)
+
+
+    exp = """
+node = hou.pwd()
+node = node.inputs()[0]
+geo = node.geometry()
+prim0 = geo.prim(0)
+return len(prim0.points())-1
+"""
+    attribvop_node.parm("num_points_per_line").setExpression(exp, hou.exprLanguage.Python)
+    
+    null_out_from_chops = subnet_lag_chops.createNode("null", "Out_from_chops")
+    null_out_from_chops.setInput(0, attribvop_node, 0)
+    
+    chopnet = subnet_lag_chops.createNode("chopnet")
+    
+    chop_geo = chopnet.createNode("geometry")
+    chop_geo.parm("soppath").set("../../For_chops")
+    chop_geo.parm("method").set(1)
+    chop_geo.parm("rate").setExpression("$FPS")
+        
+    jiggle = chopnet.createNode("jiggle")
+    jiggle.parm("stiff").set(0.01)
+    jiggle.setInput(0, chop_geo, 0)
+
+    lag = chopnet.createNode("lag")
+    lag.setInput(0, chop_geo, 0)
+    lag.parm("overshoot1").set(4.5)
+    lag.parm("overshoot2").set(4.5)
+    
+    spring = chopnet.createNode("spring")
+    spring.setInput(0, chop_geo, 0)    
+    
+    switch = chopnet.createNode("switch")
+    switch.setNextInput(jiggle)
+    switch.setNextInput(lag)
+    switch.setNextInput(spring)
+    
+    null_out = chopnet.createNode("null", "Out")
+    null_out.setInput(0, switch, 0)
+    null_out.setExportFlag(1)
+    chopnet.layoutChildren()
+    
+
+    vdb_control_node = i.node("vdbfrompolygons_control")
+    subnet_lag_chops.setInput(1, vdb_control_node, 0)
+    out_skin_node = i.node("Out_Skin")
+    subnet_lag_chops.setInput(2, out_skin_node, 0)
+    guide_collide_node = subnet_lag_chops.createNode("guidecollidevdb", "guidecollidevdb_collision")
+        
+    guide_collide_node.setInput(0, null_out_from_chops, 0)
+    guide_collide_node.setInput(1, subnet_lag_chops.indirectInputs()[2], 0)
+    guide_collide_node.setInput(2, subnet_lag_chops.indirectInputs()[1], 0)
+
+    out_node = subnet_lag_chops.createNode("null", "Out")
+    out_node.setInput(0, guide_collide_node, 0)    
+    out_node.setRenderFlag(1)
+    out_node.setTemplateFlag(1)
+    out_node.setDisplayFlag(1)
+
+    # if we are using long hair, add this to the vops sop.    
+
+    try:
+        dhg = i.node("guidedraw_create_guides")
+        cg = i.node("guidegroom_shape_curves")
+        long_hair = True
+    except:
+        long_hair = False
+    
+    if long_hair is False:
+        vdb_from = subnet_lag_chops.createNode("vdbfrompolygons")
+        vdb_from.parm("voxelsize").set(0.025)
+        vdb_from.setInput(0, subnet_lag_chops.indirectInputs()[2], 0)
+        guide_collide_node.setInput(2, vdb_from, 0)
+    
+    
+    subnet_lag_chops.layoutChildren()
+    
+for i in hou.selectedNodes():
+    chop_hair(i)]]></script>
+  </tool>
+
+  <tool name="fur" label="Fur Mantra 15" icon="opdef:/Object/fabio_hair_system?fur_icon.png">
+    <helpText><![CDATA[for a given geometry will use the display node, 
+will create a line, and a copy sop with respective nulls Outs, 
+will drop a rfx_hair_system, and will conect it to the nulls Outs.]]></helpText>
+    <script scriptType="python"><![CDATA[def populate_hair(node_list):
+    for i in node_list:
+        if i.type().nameComponents()[2] == "geo":
+            for j in i.children():
+                if type(j) == hou.SopNode:
+                    if j.isDisplayFlagSet() == 1:
+                        # Setting up the Geo guide curves needed for the hair system  --------------
+                        node_to_branch = j
+                        color_node = hou.Color((.5, .5, 0))
+                        parent = node_to_branch.parent()
+                        nameing  = parent.name()
+                        ppos = parent.position()
+
+                        lvl = parent.parent()
+                        parent =lvl.createNode("geo", nameing +"_Grooming")
+                        try:
+                            parent.node("file1").destroy()
+                        except:
+                            pass
+                        parent.parm("vm_rendervisibility").set("")
+                        parent.setDisplayFlag(0)
+                        parent.setPosition([ppos[0], ppos[1]-1])
+
+                        om = parent.createNode("object_merge")
+                        om.parm("objpath1").set(om.relativePathTo(i))
+                        om.parm("xformtype").set(1)
+
+                        facet_node = parent.createNode("facet")
+                        facet_node.parm("prenml").set(1)
+                        facet_node.setInput(0,om,0)
+
+                        null_skin_out = parent.createNode("null", "Out_Skin")
+                        null_skin_out.setColor(color_node)
+                        null_skin_out.setInput(0,facet_node,0)
+                        null_skin_out.setDisplayFlag(1)
+                        null_skin_out.setRenderFlag(1)
+
+                        w_pscale = parent.createNode("pointwrangle","pointwrangle_pscale")
+                        w_pscale.parm("snippet").set("f@pscale = 1;")
+                        w_pscale.setNextInput(null_skin_out)
+
+
+                        paint_node = parent.createNode("paint","paint_lenght")
+                        paint_node.parm("overridecd").set(1)
+                        paint_node.parm("cdname").set("pscale")
+                        paint_node.setNextInput(w_pscale)
+
+
+                        comb_node = parent.createNode("comb","comb_paint_hair_direction")
+                        comb_node.bypass(1)
+                        comb_node.parm("opacity").set(0.1)
+                        comb_node.setNextInput(paint_node)
+
+                        timeshift_node = parent.createNode("timeshift")
+                        timeshift_node.parm("frame").setExpression("$FSTART")
+                        timeshift_node.setNextInput(comb_node)
+
+                        attorient_node = parent.createNode("attribreorient")
+                        attorient_node.parm("vattribs").set("N")
+                        attorient_node.setInput(0,null_skin_out,0)
+                        attorient_node.setInput(1,timeshift_node,0)
+
+                        att_copy_node = parent.createNode("attribcopy", "attribcopy_pscale")
+                        att_copy_node.parm("attrib").set(2)
+                        att_copy_node.parm("attribname").set("pscale")
+
+                        att_copy_node.setInput(0,attorient_node, 0)
+                        att_copy_node.setInput(1,timeshift_node, 0)
+
+                        scatter_node = parent.createNode("scatter")
+                        scatter_node.setInput(0,att_copy_node,0)
+                        try:
+                            scatter_node.parm("area").set(0)
+                        except:
+                            pass
+                        scatter_node.bypass(1)
+
+                        line_node = parent.createNode("line","line_guide_fur")
+                        line_node.parmTuple("dir").set([0,0,1])
+                        line_node.parm("points").set(5)
+                        line_node.parm("dist").set(0.2)
+
+
+
+
+                        #Continue with parent code----------------
+
+                        copy_node = parent.createNode("copy", "copy_for_fur")
+                        copy_node.setInput(0,line_node, 0)
+                        copy_node.setInput(1, scatter_node , 0)
+
+                        trail = parent.createNode("trail")
+                        trail.parm("result").set(3)
+                        trail.setInput(0, copy_node)
+
+                        null_to_dops = parent.createNode("null", "Dops_Helper")
+                        null_to_dops.setNextInput(trail)
+                        null_to_dops.setColor(hou.Color((.25,.35,.5)))
+
+                        null_guides_out = parent.createNode("null", "Out_Guides")
+                        null_guides_out.setColor(color_node)
+                        null_guides_out.setInput(0,null_to_dops,0)
+
+                        delete_node = parent.createNode("delete")
+                        delete_node.parm("entity").set(0)
+                        delete_node.setInput(0, null_guides_out, 0)
+                        delete_node.parm("groupop").set(1)
+
+                        null_clumps_out = parent.createNode("null", "Out_Clumps")
+                        null_clumps_out.setInput(0, delete_node,0)
+                        null_clumps_out.setColor(color_node)
+
+
+
+                        parent.layoutChildren()
+
+                        #----------------------------------------------
+                        # setting for making the hair system the upper level
+                        obj_pos = parent.position()
+
+                        obj_pos_x = obj_pos[0]
+                        obj_pos_y = obj_pos[1]
+
+                        try:
+                            hair_system = parent.parent().createNode("Fabio_Hair_System", "Fabio_Hair_System_"+nameing)
+                        except:
+                            hair_system = parent.parent().createNode("test_Fabio_Hair_System", "test_Fabio_Hair_System_"+nameing)
+
+                        hair_system.setPosition([obj_pos_x, obj_pos_y-1])
+
+
+                        hair_system.parm("skin").set(hair_system.relativePathTo(null_skin_out))
+                        hair_system.parm("hair_guides").set(hair_system.relativePathTo(null_guides_out))
+                        hair_system.parm("clump_guides").set(hair_system.relativePathTo(null_clumps_out))
+
+                        hair_system.parm("full_interpolation").set(1)
+                    
+populate_hair( hou.selectedNodes() )]]></script>
+  </tool>
+
+  <tool name="chop_hair0" label="Chop Hair" icon="NETWORKS_chop">
+    <script scriptType="python"><![CDATA[def chop_hair(hou_parent):
+
+    to_dops = hou_parent.node("Dops_Helper")
+    before_to_dops = to_dops.inputs()[0]
+    subnet_lag_chops = hou_parent.createNode("subnet", "subnet_lag_chops")
+    subnet_lag_chops.setInput(0, before_to_dops, 0)
+    subnet_lag_chops.setColor(hou.Color([0.89, 0.412, 0.761]))
+    to_dops.setInput(0, subnet_lag_chops, 0)
+
+    brdp = before_to_dops.position()
+    tdp = to_dops.position()
+    subnet_lag_chops.setPosition([(brdp[0]+tdp[0])/2, (brdp[1]+tdp[1])/2])
+        
+    null_for_chops = subnet_lag_chops.createNode("null", "For_chops")
+    null_for_chops.setInput(0, subnet_lag_chops.indirectInputs()[0], 0)
+        
+    channel = subnet_lag_chops.createNode("channel")
+    channel.parm("choppath").set("../chopnet1/Out")
+    channel.parm("method").set(1)
+    channel.setInput(0, null_for_chops, 0)
+    
+    
+    # Code for /obj/sphere_object1_Grooming1/subnet1/pointvop1
+    attribvop_node = subnet_lag_chops.createNode("attribvop", "attribvop_blend_position")
+    attribvop_node.setInput(0, null_for_chops, 0)
+    attribvop_node.setInput(1, channel, 0)
+    geometry_global_node = attribvop_node.node("geometryvopglobal1")
+    geometry_output_node = attribvop_node.node("geometryvopoutput1")
+
+    uv_fabio = attribvop_node.createNode("uvcoords")
+    uv_fabio.parm("uvattrib").set("uv_fabio")
+    uv_fabio.setName("uvcoords_fabio")      
+    
+    # inttofloat1 = attribvop_node.createNode("inttofloat")
+    # inttofloat1.setInput(0, geometry_global_node, 12)
+    
+    # parm_points_per_line = attribvop_node.createNode("parameter")
+    # parm_points_per_line.parm("parmname").set("num_points_per_line")
+    # parm_points_per_line.parm("parmlabel").set("Num Points Per Line")
+    # parm_points_per_line.parm("parmtype").set(1)
+        
+    # add_constant = attribvop_node.createNode("addconst")
+    # add_constant.setInput(0, parm_points_per_line, 0)
+    
+    # modulo = attribvop_node.createNode("modulo")
+    # modulo.setInput(0, inttofloat1, 0)
+    # modulo.setInput(1, add_constant, 0)    
+        
+    # divide = attribvop_node.createNode("divide")
+    # divide.setInput(0, modulo, 0)
+    # divide.setInput(1, add_constant, 0)
+
+    ramp_mix = attribvop_node.createNode("rampparm", "ramp_lag_per_line")
+    ramp_mix.parm("parmname").set("ramp_mix")
+    ramp_mix.parm("parmlabel").set("Ramp mix")
+    ramp_mix.parm("ramptype").set(1)
+    ramp_mix.setInput(0, uv_fabio, 1)
+    
+    import_point = attribvop_node.createNode("importpoint")
+    import_point.parm("opinput").set("opinput:1")
+    
+    mix = attribvop_node.createNode("colormix")
+    mix.setInput(0, geometry_global_node, 0)
+    mix.setInput(1, import_point, 0)
+    mix.setInput(2, ramp_mix, 0)
+    
+    geometry_output_node.setInput(0, mix, 0)
+
+
+#     exp = """
+# node = hou.pwd()
+# node = node.inputs()[0]
+# geo = node.geometry()
+# prim0 = geo.prim(0)
+# return len(prim0.points())-1
+# """
+#     attribvop_node.parm("num_points_per_line").setExpression(exp, hou.exprLanguage.Python)
+    
+    null_out_from_chops = subnet_lag_chops.createNode("null", "Out_from_chops")
+    null_out_from_chops.setInput(0, attribvop_node, 0)
+    
+    chopnet = subnet_lag_chops.createNode("chopnet")
+    
+    chop_geo = chopnet.createNode("geometry")
+    chop_geo.parm("soppath").set("../../For_chops")
+    chop_geo.parm("method").set(1)
+    chop_geo.parm("rate").setExpression("$FPS")
+        
+    jiggle = chopnet.createNode("jiggle")
+    jiggle.parm("stiff").set(0.01)
+    jiggle.setInput(0, chop_geo, 0)
+
+    lag = chopnet.createNode("lag")
+    lag.setInput(0, chop_geo, 0)
+    lag.parm("overshoot1").set(4.5)
+    lag.parm("overshoot2").set(4.5)
+    
+    spring = chopnet.createNode("spring")
+    spring.setInput(0, chop_geo, 0)    
+    
+    switch = chopnet.createNode("switch")
+    switch.setNextInput(jiggle)
+    switch.setNextInput(lag)
+    switch.setNextInput(spring)
+    
+    null_out = chopnet.createNode("null", "Out")
+    null_out.setInput(0, switch, 0)
+    null_out.setExportFlag(1)
+    chopnet.layoutChildren()
+    
+
+    # vdb_control_node = i.node("vdbfrompolygons_control")
+    # subnet_lag_chops.setInput(1, vdb_control_node, 0)
+    out_skin_node = i.node("Out_Skin")
+    out_anim_object_node = i.node("Out_anim_object")
+    subnet_lag_chops.setInput(2, out_anim_object_node, 0)
+    guide_collide_node = subnet_lag_chops.createNode("guidecollidevdb", "guidecollidevdb_collision")
+    guide_collide_node.bypass(True)
+    
+    vdb_from_poly = subnet_lag_chops.createNode("vdbfrompolygons")
+    vdb_from_poly.setInput(0, subnet_lag_chops.indirectInputs()[2])
+    vdb_from_poly.setPosition([1.36176, 2.52845])
+    
+    guide_collide_node.setInput(0, null_out_from_chops, 0)
+    guide_collide_node.setInput(1, subnet_lag_chops.indirectInputs()[2], 0)
+    guide_collide_node.setInput(2, vdb_from_poly, 0)
+
+    out_node = subnet_lag_chops.createNode("null", "Out")
+    out_node.setInput(0, guide_collide_node, 0)    
+    out_node.setRenderFlag(1)
+    out_node.setTemplateFlag(1)
+    out_node.setDisplayFlag(1)
+
+    # if we are using long hair, add this to the vops sop.    
+
+    try:
+        dhg = i.node("guidedraw_create_guides")
+        cg = i.node("guidegroom_shape_curves")
+        long_hair = True
+    except:
+        long_hair = False
+    
+    if long_hair is False:
+        vdb_from = subnet_lag_chops.createNode("vdbfrompolygons")
+        vdb_from.parm("voxelsize").set(0.025)
+        vdb_from.setInput(0, subnet_lag_chops.indirectInputs()[2], 0)
+        guide_collide_node.setInput(2, vdb_from, 0)
+    
+    
+    subnet_lag_chops.layoutChildren()
+    
+for i in hou.selectedNodes():
+    chop_hair(i)]]></script>
+  </tool>
+
+  <tool name="dops" label="Dops" icon="opdef:/Object/fabio_hair_system??hair_dops.png">
+    <script scriptType="python"><![CDATA[def blend_position(position1, position2):
+
+    # Code for /obj/sphere_object1_Grooming1/subnet1/pointvop1
+    attribvop_node = position1.parent().createNode("attribvop", "attribvop_blend_position")
+    attribvop_node.setInput(0,  position1, 0)
+    attribvop_node.setInput(1, position2, 0)
+    geometry_global_node = attribvop_node.node("geometryvopglobal1")
+    geometry_output_node = attribvop_node.node("geometryvopoutput1")
+    
+    
+    uv_fabio = attribvop_node.createNode("uvcoords")
+    uv_fabio.parm("uvattrib").set("uv_fabio")
+    uv_fabio.setName("uvcoords_fabio")
+    # inttofloat1 = attribvop_node.createNode("inttofloat")
+    # inttofloat1.setInput(0, geometry_global_node, 12)
+    
+    # parm_points_per_line = attribvop_node.createNode("parameter")
+    # parm_points_per_line.parm("parmname").set("num_points_per_line")
+    # parm_points_per_line.parm("parmlabel").set("Num Points Per Line")
+    # parm_points_per_line.parm("parmtype").set(1)
+        
+    # add_constant = attribvop_node.createNode("addconst")
+    # add_constant.setInput(0, parm_points_per_line, 0)
+    
+    # modulo = attribvop_node.createNode("modulo")
+    # modulo.setInput(0, inttofloat1, 0)
+    # modulo.setInput(1, add_constant, 0)    
+        
+    # divide = attribvop_node.createNode("divide")
+    # divide.setInput(0, modulo, 0)
+    # divide.setInput(1, add_constant, 0)
+
+    ramp_mix = attribvop_node.createNode("rampparm", "ramp_lag_per_line")
+    ramp_mix.parm("parmname").set("ramp_mix")
+    ramp_mix.parm("parmlabel").set("Ramp mix")
+    ramp_mix.parm("ramptype").set(1)
+    ramp_mix.setInput(0, uv_fabio, 1)
+    
+    import_point = attribvop_node.createNode("importpoint")
+    import_point.parm("opinput").set("opinput:1")
+    
+    mix = attribvop_node.createNode("colormix")
+    mix.setInput(0, geometry_global_node, 0)
+    mix.setInput(1, import_point, 0)
+    mix.setInput(2, ramp_mix, 0)
+    
+    geometry_output_node.setInput(0, mix, 0)
+    geometry_output_node.setInput(3, ramp_mix, 0)
+
+#     exp = """
+# node = hou.pwd()
+# node = node.inputs()[0]
+# geo = node.geometry()
+# prim0 = geo.prim(0)
+# return len(prim0.points())-1
+# """
+#     attribvop_node.parm("num_points_per_line").setExpression(exp, hou.exprLanguage.Python)    
+                    
+    bases = [hou.rampBasis.Linear] * 2
+    keys =  [0.0, 0.2]
+    values = [0.0, 1.0]
+    ramp = hou.Ramp(bases, keys, values)    
+    attribvop_node.parm("ramp_mix").set(ramp)
+    attribvop_node.layoutChildren()
+    # ----------------------
+    return attribvop_node
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+selection = hou.ui.displayMessage("Select dynamics method:", ["DOP's", "Vellum", "Cancel"])
+if selection != 2:            
+    for i in hou.selectedNodes():
+        if i.type().nameComponents()[2] == "geo":        
+            dop_helper_null = i.node("Dops_Helper")
+            out_skin_null = i.node("Out_Skin")
+            out_skin_anim_null = i.node("Out_anim_object")
+            
+            subnet_dops = i.createNode("subnet")
+            subnet_dops.setInput(0, dop_helper_null.inputs()[0], 0)
+            subnet_dops.setColor(hou.Color([0.765, 1, 0.576]))
+
+            subnet_dops.setPosition([  (dop_helper_null.position()[0]+  dop_helper_null.inputs()[0].position()[0])/2, (dop_helper_null.position()[1]+  dop_helper_null.inputs()[0].position()[1])/2              ])
+            
+            #vopsop for Dops-----------------------
+            if selection == 0:
+                vopsop_name = "vopsop_for_DOPS"
+                subnet_dops.setName("subnet_DOPS", True)
+
+                
+            elif selection == 1:
+                vopsop_name = "vopsop_for_Vellum"
+                subnet_dops.setName("subnet_Vellum", True)
+                subnet_dops.setInput(1, out_skin_anim_null, 0)
+            
+            dop_helper_null_input = dop_helper_null.setInput(0, subnet_dops, 0)
+            
+            vopsop_dop = subnet_dops.createNode("vopsop", vopsop_name)
+            dop_helper_null_input = dop_helper_null.inputs()[0]
+            vopsop_dop.setPosition([dop_helper_null_input.position()[0], dop_helper_null_input.position()[1]-.75     ])
+            vopsop_dop.setColor(hou.Color([0.765, 1, 0.576]))          
+
+            try:
+                line_node = subnet_dops.node("line_guide_fur")
+        
+                for j in line_node.outputs():
+                    j.setInput(0, vopsop_dop, 0)
+                vopsop_dop.setNextInput(line_node)
+            except:
+                vopsop_dop.setInput(0, subnet_dops.indirectInputs()[0], 0)
+
+            dop_helper_null.setInput(0, subnet_dops, 0)
+            
+            if selection == 0:  # dops
+                to_dops = subnet_dops.createNode("null", "To_Dops")
+                to_dops.setInput(0, vopsop_dop, 0)
+                list_of_dop_parms = ["density",
+                                    "width",
+                                    "klinear", 
+                                    "damplinear",
+                                    "kangular",
+                                    "dampangular",
+                                    "nocollide",
+                                    "gluetoanimation",
+                                    "selfcollisionallowed"]
+            elif selection == 1:  # vellum
+                list_of_dop_parms = ["mass",
+                                     "width",
+                                     "stretchstiffness",
+                                     "stretchdamping",
+                                     "bendstiffness",
+                                     "benddamping",
+                                     "breakthresholdscale",
+                                     "pscale"
+                                     # "disableexternal"
+                                     ]
+            
+            vop_globals = vopsop_dop.node("global1")
+            
+            uv_fabio = vopsop_dop.createNode("uvcoords")
+            uv_fabio.parm("uvattrib").set("uv_fabio")
+            uv_fabio.setName("uvcoords_fabio")
+            
+            """
+            inttofloat = vopsop_dop.createNode("inttofloat")
+            inttofloat.setInput(0,vop_globals,8)
+            
+            divide = vopsop_dop.createNode("divide")
+            divide.setInput(0,inttofloat,0)
+            divide.setInput(1,vop_globals,11)
+            """
+            
+            lin = hou.rampBasis.Linear
+            cons = hou.rampBasis.Constant
+            linear_ramp = hou.Ramp((lin, lin), (0, 1), (1, 1))
+        
+            for z in list_of_dop_parms:
+                ramp_parm = vopsop_dop.createNode("rampparm", "ramp_" + z)
+                ramp_parm.setInput(0, uv_fabio, 1)
+                ramp_parm.parm("parmname").set("ramp_"+z)
+                ramp_parm.parm("parmlabel").set("Ramp "+z)
+                ramp_parm.parm("ramptype").set(1)
+                ramp_parm.parm("rampshowcontrolsdefault").set(0)
+        
+                bind_parm = vopsop_dop.createNode("bind", "bind_"+z)
+                bind_parm.parm("parmname").set(z)
+                bind_parm.parm("useasparmdefiner").set(1)
+                bind_parm.parm("exportparm").set(2)
+        
+                if z == "gluetoanimation":
+                    glue_ramp = hou.Ramp((cons,cons), (0,.1), (1,0))
+                    vopsop_dop.parm("ramp_"+z).set(glue_ramp)
+                elif z == "selfcollisionallowed":
+                    selfcollision_ramp = hou.Ramp((cons,cons), (0,.1), (1,1))
+                    vopsop_dop.parm("ramp_"+z).set(selfcollision_ramp)
+                elif z == "nocollide":
+                    nocollide_ramp = hou.Ramp((cons,cons), (0,.1), (1,1))
+                    vopsop_dop.parm("ramp_"+z).set(nocollide_ramp)
+        
+                if z == "nocollide" or z == "selfcollisionallowed" or  z == "gluetoanimation":
+                    bind_parm.setInput(0,ramp_parm,0)
+
+                # if z == "disableexternal":
+                #     disableexternal_ramp = hou.Ramp((cons,cons), (0,.2), (1,0))
+                #     vopsop_dop.parm("ramp_"+z).set(disableexternal_ramp)
+                #     bind_parm.setInput(0, ramp_parm, 0)
+
+                else:
+                    cons_parm = vopsop_dop.createNode("parameter")
+                    cons_parm.parm("parmname").set(z+"_mult")
+                    cons_parm.parm("parmlabel").set(z+" Mult")
+                    if z == "pscale":                    
+                        cons_parm.parm("floatdef").set(0.0025)
+                    else:
+                        cons_parm.parm("floatdef").set(1)
+                    
+                    ramp_mult = vopsop_dop.createNode("multiply")
+                    ramp_mult.setInput(0,ramp_parm,0)
+                    ramp_mult.setInput(1,cons_parm,0)
+        
+                    bind_parm.setInput(0,ramp_mult,0)
+                    vopsop_dop.parm("ramp_"+z).set(linear_ramp)
+        
+            vopsop_dop.layoutChildren()
+
+            if selection == 0:  # regular dops
+                dopnet_node = subnet_dops.createNode("dopnet", "dopnet_Hair_" + i.name() )
+                dopnet_node.setDisplayFlag(0)
+                
+                dopnet_node.parm("startframe").setExpression("$FSTART")
+
+                wireobject_node = dopnet_node.createNode("wireobject", "wireobject_" + i.name())
+                wireobject_node.parm("soppath").set(wireobject_node.relativePathTo(to_dops))
+                wireobject_node.parm("animategeom").set(1)
+                wireobject_node.parm("usetransform").set(1)
+            
+                wireobject_node.parm("klinear").set(.25)
+                wireobject_node.parm("damplinear").set(.001)
+                wireobject_node.parm("kangular").set(.001)
+                wireobject_node.parm("dampangular").set(.00001)
+            
+                wire_solver = dopnet_node.createNode("wiresolver")
+                wire_solver.setInput(0, wireobject_node, 0)
+                wire_solver.parm("spatialscale").set(1)
+                wire_solver.parm("minsubsteps").set(2)
+            
+                static_obj = dopnet_node.createNode("staticobject" )
+                static_obj.parm("soppath").set( static_obj.relativePathTo(out_skin_anim_null))
+                static_obj.parm("objpath").set(static_obj.relativePathTo(i))
+                try:
+                    static_obj.parm("collisiondetection").set(2)
+                except:
+                    pass
+            
+                static_obj.parm("usetransform").set(1)
+                static_obj.parm("usevolume").set(0)
+                static_obj.parm("animategeo").set(1)
+
+                static_solver = dopnet_node.createNode("staticsolver")
+                static_solver.setInput(0, static_obj, 0)
+
+                merge_node = dopnet_node.createNode("merge")
+                merge_node.setNextInput(static_solver)
+                merge_node.setNextInput(wire_solver)
+
+                gravity = dopnet_node.createNode("gravity", "gravity_make_thing_fall_down")
+                gravity.parm("uniquedataname").set(0)
+                gravity.setInput(0, merge_node, 0)
+
+                null_out = dopnet_node.createNode("null", "OUT")
+                null_out.setInput(0, gravity, 0)
+                null_out.setDisplayFlag(1)
+
+                dopnet_node.layoutChildren()
+
+                dopimport_node = subnet_dops.createNode("dopimport")
+                dopimport_node.setPosition([dop_helper_null.position()[0], dop_helper_null.position()[1] - 1])
+                dopimport_node.parm("doppath").set(dopimport_node.relativePathTo(dopnet_node))
+                dopimport_node.parm("objpattern").set(wireobject_node.name())
+                dopimport_node.parm("importstyle").set(0)
+                dopimport_node.setColor(hou.Color([0.765, 1, 0.576]))
+
+                attrib_blend = blend_position(subnet_dops.indirectInputs()[0], dopimport_node)
+                         
+                out = subnet_dops.createNode("null", "Out")
+                out.setInput(0, attrib_blend, 0)
+                out.setDisplayFlag(1)
+                out.setRenderFlag(1)
+                
+                subnet_dops.setDisplayFlag(1)
+                
+                output = subnet_dops.createNode("output")
+                output.setInput(0, out)
+                output.setPosition([0.00345, -1.20029])
+
+            if selection == 1:  # vellum
+
+
+                atribute_create_disableexternal = subnet_dops.createNode("attribcreate", "attribcreate_disableexternal")
+                atribute_create_disableexternal.parm("group").set("roots")
+                atribute_create_disableexternal.parm("name1").set("disableexternal")
+                atribute_create_disableexternal.parm("default1v1").set(0)
+                atribute_create_disableexternal.parm("value1v1").set(1)
+                atribute_create_disableexternal.setInput(0, vopsop_dop, 0)
+
+
+                subnet_dops.setColor(hou.Color([0.38, 0.408, 0.553]))
+                vopsop_dop.setColor(hou.Color([0.38, 0.408, 0.553]))
+                vellum_contrain_node = subnet_dops.createNode("vellumconstraints", "vellum_hair_fabio")
+                vellum_contrain_node.parm("constrainttype").set(4)
+                vellum_contrain_node.parm("pingroup").set("roots")            
+                vellum_contrain_node.parm("matchanimation").set(1)
+                vellum_contrain_node.setInput(0, atribute_create_disableexternal, 0)
+                vellum_contrain_node.setInput(2, subnet_dops.indirectInputs()[1], 0)
+                vellum_contrain_node.setPosition([dop_helper_null.position()[0], dop_helper_null.position()[1]-.75  ])
+                
+                vellum_solver_node = subnet_dops.createNode("vellumsolver", "vellum_solver_fabio")
+                for vellum_solver_node_input in range(3):
+                    vellum_solver_node.setInput(vellum_solver_node_input, vellum_contrain_node, vellum_solver_node_input)
+
+                attrib_blend = blend_position(subnet_dops.indirectInputs()[0], vellum_solver_node)
+                
+                out = subnet_dops.createNode("null", "Out")
+                out.setInput(0, attrib_blend, 0)
+                out.setDisplayFlag(1)
+                out.setRenderFlag(1)
+
+                output = subnet_dops.createNode("output")
+                output.setPosition( [0, -1.17205])
+                output.setInput(0, out)
+
+            subnet_dops.setDisplayFlag(1)
+            subnet_dops.layoutChildren()
+
+
+            # todo dont remember why was this for,  i think if for v15 were unguided hair was done by the lines
+            # now in 19 is dont by normal, or the furdirection attibute (that are vectors)
+            '''
+            # if we are using long hair, add this to the vops sop.    
+            long_hair = False
+            dhg = i.node("guidedraw_create_guides")
+            cg = i.node("guidegroom_shape_curves")
+            if dhg is not None and cg is not None:
+                long_hair = True
+
+            elif long_hair is False:
+                """
+                vopsop_in_parent = hou.copyNodesTo([vopsop_dop], vopsop_dop.parent().parent())[0]
+                line_fur = i.node("line_guide_fur")
+                copy_node = i.node("copy_for_fur")  
+                vopsop_in_parent.setInput(0, line_fur, 0)
+
+                vopsop_dop.destroy()
+
+                print(f"copy_node: {copy_node}")
+                print(f"copy_node.position()[0]: {copy_node.position()[0]}")
+                print(f"copy_node.inputs()[0].position(): {copy_node.inputs()[0].position()}" )
+
+                up_position = (copy_node.position()[0] + copy_node.inputs()[0].position()[0]) / 2
+                down_position = (copy_node.position()[1] + copy_node.inputs()[0].position()[1]) / 2
+                vopsop_in_parent.setPosition( [  up_position ,  down_position ] )
+                
+                copy_node.setInput(0, vopsop_in_parent, 0)
+                
+                # this is for vellum  to attach the first point to animation, vellum works with groups,
+                # compare to dops that use the gluetoanimation attribute
+                if selection == 1:
+                    addgroup = vopsop_in_parent.createNode("addgroup")
+                    addgroup.parm("group").set("roots")
+                """
+        '''
+        else:
+            hou.ui.displayMessage("Needs a geometry node, geo object_Grooming#", ["Ok"])
+]]></script>
+  </tool>
+
+  <tool name="fem" label="FEM" icon="SHELF_organic_tissue">
+    <script scriptType="python"><![CDATA[
+green_color = hou.Color((0.302, 0.525, 0.114))
+
+def foreach_curve(parent, name, position=[]):
+    begin_name = "block_begin_"+name
+    end_name = "foreach_end_"+name
+
+    begin = parent.createNode("block_begin", begin_name)
+    begin.parm("method").set(1)
+    begin.parm("blockpath").set("../"+end_name)
+    if position:
+        begin.setPosition(position)
+
+    end = parent.createNode("block_end", end_name)
+    end.parm("itermethod").set(1)
+    end.parm("method").set(1)
+    end.parm("class").set(0)
+    end.parm("useattrib").set(0)
+    end.parm("blockpath").set("../"+begin_name)
+    end.parm("templatepath").set("../"+begin_name)
+
+    end.setInput(0, begin, 0)
+    end.setPosition( [begin.position()[0],   begin.position()[0]-3 ] )
+
+    return begin, end
+
+
+def foreach_curve_snippet(parent, name, snippet, position=[]):
+    begin, end = foreach_curve(parent, name, position=position)
+
+    attribwrangle = parent.createNode("attribwrangle", "attribwrangle_" + name)
+    attribwrangle.setInput(0, begin, 0)
+    attribwrangle.parm("snippet").set(snippet)
+    end.setInput(0, attribwrangle, 0)
+
+    # positioning
+    middle_y = (begin.position()[1] + end.position()[1]) / 2
+    attribwrangle.setPosition([begin.position()[0], middle_y])
+
+    return begin, end, attribwrangle
+
+
+
+
+def fem_function(node_to_connect, node_to_output):
+
+    upper_lvl = node_to_connect.parent()
+    parent = upper_lvl.createNode("subnet", "subnet_FEM")
+    parent.parm("label1").set("Hairs")
+    parent.parm("label2").set("Skin")
+    parent.setInput(0, node_to_connect, 0)
+
+    ntc_pos = node_to_connect.position()
+    parent.setPosition([ntc_pos[0]+2, ntc_pos[1]-1])
+    parent.setColor(hou.Color(0.565, 0.494, 0.863))
+
+
+    #----------------------
+    emb_null = parent.createNode("null", "embebed")
+    emb_null.setInput(0, parent.indirectInputs()[0], 0)
+
+
+    dopimport_embedded = parent.createNode("dopimport", "dopimport_embedded_FEM")
+    # todo make relative paths to
+    dopimport_embedded.parm("doppath").set("../dopnet_Hair_FEM")
+    dopimport_embedded.parm("objpattern").set("femsolidobject1")
+    dopimport_embedded.parm("importstyle").set(0)
+    dopimport_embedded.parm("geodatapath").setExpression("EmbeddedGeometry")
+    # print(emb_null)
+
+    # todo check line 27
+    # dopimport_embedded.setInput(0, emb_null, 0)
+
+
+
+
+
+    #c_pos_x, c_pos_y = node_to_connect.position()
+    #o_pos_x, o_pos_y = node_to_output.position()
+    #dopimport_embedded.setPosition([ (c_pos_x + o_pos_x)/2, (c_pos_y + o_pos_y)/2  ])
+    #dopimport_embedded.setColor(hou.Color(0.565, 0.494, 0.863))
+
+    #node_to_output.setInput(0, dopimport_embedded, 0)
+
+
+    # Code for /obj/sphere_object1_Grooming1/subnet1/pointvop1
+    attribvop_node = parent.createNode("attribvop", "attribvop_blend_position")
+    attribvop_node.setInput(0,  parent.indirectInputs()[0], 0)
+    attribvop_node.setInput(1, dopimport_embedded, 0)
+    geometry_global_node = attribvop_node.node("geometryvopglobal1")
+    geometry_output_node = attribvop_node.node("geometryvopoutput1")
+
+    uv_fabio = attribvop_node.createNode("uvcoords")
+    uv_fabio.parm("uvattrib").set("uv_fabio")
+    uv_fabio.setName("uvcoords_fabio")
+
+    ramp_mix = attribvop_node.createNode("rampparm", "ramp_lag_per_line")
+    ramp_mix.parm("parmname").set("ramp_mix")
+    ramp_mix.parm("parmlabel").set("Ramp mix")
+    ramp_mix.parm("ramptype").set(1)
+    ramp_mix.setInput(0, uv_fabio, 1)
+
+    import_point = attribvop_node.createNode("importpoint")
+    import_point.parm("opinput").set("opinput:1")
+
+    mix = attribvop_node.createNode("mix")
+    mix.setInput(0, geometry_global_node, 0)
+    mix.setInput(1, import_point, 0)
+    mix.setInput(2, ramp_mix, 0)
+
+    geometry_output_node.setInput(0, mix, 0)
+
+    bases = [hou.rampBasis.Linear] * 2
+    keys = [0.0, 0.2]
+    values = [0.0, 1.0]
+    ramp = hou.Ramp(bases, keys, values)
+    attribvop_node.parm("ramp_mix").set(ramp)
+
+    output = parent.createNode("output")
+    output.setInput(0, attribvop_node, 0)
+    # ----------------------
+#     stifness_snippet = """
+# float ammo = npoints(0)-1;  // total points
+# float mod = (@ptnum/ammo); // the percentage 0 to 1
+# float ramper = chramp("ramper", mod);
+# float scaler = chf("scaler", 1);
+# @stiffness = set(ramper * scaler);
+#     """
+#     begin_stiff, end_stiff, attibwrangler_stiff = foreach_curve_snippet(parent,
+#                                                                         name="stiffness",
+#                                                                         snippet=stifness_snippet,
+#                                                                         )
+    # for i_stiff in [begin_stiff, end_stiff, attibwrangler_stiff]:
+    #     i_stiff.bypass(1)
+
+    # begin_stiff.setInput(0, parent.indirectInputs()[0])
+
+    # stiff_sticky = parent.createStickyNote("stiff")
+    # stiff_sticky.setText("""
+    # if you want to control the stiffness by the length of the curve
+    # by pass the for loop and click create parameters in te attibuteWrangler
+    # """)
+    #
+    # stiff_sticky.setPosition([-14.8266, 13.8159])
+    # stiff_sticky.setSize([7.75327, 1.3691])
+    # stiff_sticky.setColor(green_color)
+
+    resample = parent.createNode("resample")
+    resample.parm("dolength").set(0)
+    resample.parm("dosegs").set(1)
+    resample.parm("segs").set(50)
+    resample.bypass(1)
+    resample.setInput(0, parent.indirectInputs()[0], 0)
+
+    metaball = parent.createNode("metaball")
+    metaball.parmTuple("rad").set([.05, .05, .05])
+
+    copytopoints = parent.createNode("copytopoints")
+    copytopoints.setInput(0, metaball, 0)
+    copytopoints.setInput(1, resample, 0)
+    copytopoints.parm('transform').set(0)
+
+    color0 = parent.createNode("color")
+    color0.parmTuple("color").set([0,1,0])
+    color0.setInput(0, copytopoints, 0)
+
+    out_skin = upper_lvl.node("Out_Skin")
+    parent.setInput(1, out_skin, 0)
+
+    zero_color = parent.createNode("color")
+    zero_color.parmTuple("color").set([0,0,0])
+    zero_color.setInput(0, parent.indirectInputs()[1], 0)
+
+    subdivide = parent.createNode("subdivide")
+    subdivide.setInput(0, zero_color, 0)
+    subdivide.bypass(1)
+
+    color1 = parent.createNode("color")
+    color1.parmTuple("color").set([1, 0, 0])
+    color1.setInput(0, subdivide, 0)
+
+    timeshift = parent.createNode("timeshift")
+    timeshift.parm("frame").setExpression("$FSTART")
+    timeshift.setInput(0, color0, 0)
+
+    convert = parent.createNode("convert")
+    
+    convert.parm("lodu").set(1.55)
+    convert.setInput(0, timeshift, 0)
+
+    use_your_geo_null = parent.createNode("null", "USE_YOUR_GEO_HAIR_REPRESENTATION")
+    use_your_geo_null.setColor(green_color)
+
+    switch = parent.createNode("switch")
+    switch.setNextInput(convert)
+    switch.setNextInput(use_your_geo_null)
+
+    attrib_transfer0 = parent.createNode("attribtransfer")
+    attrib_transfer0.parm("pointattriblist").set("Cd")
+    attrib_transfer0.parm("thresholddist").set(0.05)
+    attrib_transfer0.parm("blendwidth").set(0)
+    attrib_transfer0.setInput(0, switch, 0)
+    attrib_transfer0.setInput(1, color1, 0)
+
+    pointwrangle_color_to_root = parent.createNode("attribwrangle", "attribwrangle_cd_to_roots")
+    pointwrangle_color_to_root.parm("snippet").set("""
+float for_roots = @Cd.r>0.5;
+@for_roots = set(for_roots);
+    """)
+    pointwrangle_color_to_root.setInput(0, attrib_transfer0, 0)
+
+    # color_to_see_stiffness = parent.createNode("color", "color_to_viz_stiffness")
+    # color_to_see_stiffness.parmTuple("color").set([0, 0, 1])
+    # color_to_see_stiffness.setInput(0, resample)
+
+    # attrib_transfer_stiff = parent.createNode("attribtransfer", "attribtransfer_stiffness")
+    # attrib_transfer_stiff.parm("pointattriblist").set("stiffness Cd")
+    # attrib_transfer_stiff.parm("thresholddist").set(0.05)
+    # attrib_transfer_stiff.parm("blendwidth").set(0)
+    # attrib_transfer_stiff.setInput(0, pointwrangle_color_to_root, 0)
+    # attrib_transfer_stiff.setInput(1, color_to_see_stiffness, 0)
+
+    solid = parent.createNode("solidembed")
+    solid.setInput(0, pointwrangle_color_to_root, 0)
+    solid.parm("elementscale").set(0.3)
+
+    solid_sticky = parent.createStickyNote("solid_note")
+    solid_sticky.setText("solidembed\nmin triangle scale will help capture the points of the hair in the ../../dopimport_embedded_FEM node")
+
+    group_roots = parent.createNode("groupcreate", "groupcreate_roots")
+    group_roots.parm("groupname").set("roots_fem")
+    group_roots.parm("grouptype").set(1)
+    group_roots.parm("basegroup").set("@for_roots>.5")
+    group_roots.setInput(0, solid, 0)
+
+    out_for_fem = parent.createNode("null", "Out_for_FEM")
+    out_for_fem.setInput(0, group_roots, 0)
+
+    dopimport = parent.createNode("dopimport", "dopimport_FEM")
+    # make relative paths to
+    dopimport.parm("doppath").set("../dopnet_Hair_FEM")
+    dopimport.parm("objpattern").set("femsolidobject1")
+    dopimport.parm("importstyle").set(0)
+    dopimport.parm("geodatapath").set("")
+
+    dopimport.setDisplayFlag(1)
+    dopimport.setRenderFlag(1)
+
+    attrib_transfer1 = parent.createNode("attribtransfer")
+    attrib_transfer1.parm("pointattriblist").set("Cd")
+    attrib_transfer1.parm("thresholddist").set(0.05)
+    attrib_transfer1.parm("blendwidth").set(0)
+    attrib_transfer1.setInput(0, color1, 0)
+    attrib_transfer1.setInput(1, color0, 0)
+    attrib_transfer1.bypass(1)
+
+    group_roots = parent.createNode("groupcreate")
+    group_roots.parm("groupname").set("roots_folicules")
+    group_roots.parm("grouptype").set(1)
+    group_roots.parm("basegroup").set("@Cd.r<0.5")
+    group_roots.setInput(0, attrib_transfer1, 0)
+    group_roots.bypass(1)
+
+    out_coll_fem = parent.createNode("null", "Out_Collision_FEM")
+    out_coll_fem.setInput(0, group_roots, 0)
+
+
+    # ========================= dops
+    dopnet_node = parent.createNode("dopnet","dopnet_Hair_FEM")
+    dopnet_node.setDisplayFlag(0)
+
+    dopnet_node.parm("startframe").setExpression("$FSTART")
+
+    solidobject = dopnet_node.createNode("femsolidobject")
+    solidobject.parm("soppath").set(solidobject.relativePathTo(out_for_fem))
+    solidobject.parm("importrestgeometry").set(1)
+
+    relative_solid_to_embedded_null = solidobject.relativePathTo(emb_null)
+    solidobject.parm("enableembedding").set(1)
+    solidobject.parm("embeddedgeometry").set(relative_solid_to_embedded_null)
+
+    finiteelementsolver = dopnet_node.createNode("finiteelementsolver")
+    finiteelementsolver.setInput(0,solidobject,0)
+
+    static_obj = dopnet_node.createNode("staticobject" )
+    static_obj.parm("soppath").set( solidobject.relativePathTo(out_coll_fem))
+    static_obj.parm("objpath").set(static_obj.relativePathTo(i) )
+    static_obj.parm("usetransform").set(1)
+    static_obj.parm("animategeo").set(1)
+    static_obj.parm("collisiondetection").set(1)
+    static_obj.parm("offset").set(0.02)
+    static_obj.parm("friction").set(0)
+
+    static_solver = dopnet_node.createNode("staticsolver")
+    static_solver.setInput(0,static_obj,0)
+
+    merge_node = dopnet_node.createNode("merge")
+    merge_node.setNextInput(static_solver)
+    merge_node.setNextInput(finiteelementsolver)
+
+    gravity = dopnet_node.createNode("gravity", "gravity_make_thing_fall_down")
+    gravity.parm("uniquedataname").set(0)
+    gravity.setInput(0,merge_node,0)
+
+    constr = dopnet_node.createNode("clothattachconstraint")
+    constr.setInput(0, gravity, 0)
+
+    constr.parm("strength").set(10000000)
+    constr.parm("constrainedobject").set(solidobject.name())
+    constr.parm("constrainedpoints").set("roots_fem")
+    constr.parm("goalobject").set("staticobject1")
+
+    null_out = dopnet_node.createNode("null", "OUT")
+    null_out.setInput(0, constr, 0)
+    null_out.setDisplayFlag(1)
+
+    output = dopnet_node.node("output")
+    output.setInput(0, null_out, 0)
+
+    dopnet_node.layoutChildren()
+
+    parent.layoutChildren()
+
+    solid_pos = solid.position()
+    solid_sticky.setPosition([solid_pos[0] - 4, solid_pos[1]])
+
+    node_to_output.setInput(0, parent, 0)
+
+
+for i in hou.selectedNodes():
+    if i.type().nameComponents()[2] == "geo":
+        up = i.node("Dops_Helper").inputs()[0]
+        down = i.node("Dops_Helper")
+        fem_function(up, down)
+
+    else:
+        hou.ui.displayMessage("Select the grooming node with the 'To_Dops' null")]]></script>
+  </tool>
+
+  <tool name="curve_example" label="Curve Example" icon="opdef:/Object/fabio_hair_system?curve_tutorial.png">
+    <helpText><![CDATA[Will create a curve and will set one fabio to follow along.
+
+if nothing is selected will create a default line.  if a curve nodes are selected at Geo/Scene level  will do the setup for each one of them.
+and will set the option to use chops lag.  (usefull if the curve is animated)]]></helpText>
+    <script scriptType="python"><![CDATA[def place_nodes(inside_node, curve_provided=False):
+    if curve_provided is False:
+        line = inside_node.createNode("line")
+        line.parm("points").set(10)
+    else:
+        line = curve_provided
+
+    null_curve_in = inside_node.createNode("null", "Curve_In")
+    null_curve_in.setInput(0, line)
+
+    resample_node = inside_node.createNode("resample", "resample_make_sure_duplicates_follow_exactly")
+    resample_node.setInput(0, null_curve_in)
+
+    vopsop_pscale_node = inside_node.createNode("vopsop", "vopsop_pscale")
+    vopsop_pscale_function(vopsop_pscale_node)
+    vopsop_pscale_node.setInput(0, resample_node)
+
+    null_count_points = inside_node.createNode("null", "count_points")
+    null_count_points.setInput(0, vopsop_pscale_node)
+
+    switch_chop_node = inside_node.createNode("switch", "switch_to_chops_lags")
+    switch_chop_node.setNextInput(null_count_points)
+    switch_chop_node.parm("input").set(1)
+    switch_chop_node.bypass(1)
+
+    lag_function(null_count_points, switch_chop_node)
+
+    null_out_to_dop_as_wire = inside_node.createNode("null", "Out_to_DOP_as_Wire")
+    null_out_to_dop_as_wire.setInput(0, switch_chop_node)
+
+    circle_node = inside_node.createNode("circle")
+    circle_node.parm("type").set(1)
+    circle_node.parm("radx").set(0.1)
+    circle_node.parm("rady").set(0.1)
+    circle_node.parm("divs").set(6)
+
+    # xform_up_vector_node = inside_node.createNode("xform", "xform_upvector_if_needed")
+    # xform_up_vector_node.parm("ty").set(150)
+    # xform_up_vector_node.bypass(1)
+    # xform_up_vector_node.setInput(0, null_out_to_dop_as_wire)
+
+    sweep_node = inside_node.createNode("sweep")
+    # sweep_node.parm("scale").setExpression('point(opinputpath(".", 1), $PT, "pscale", 0)')
+    # sweep_node.parm("skin").set(1)
+    sweep_node.parm("upvectortype").set(3)
+    sweep_node.setInput(1, circle_node)
+    sweep_node.setInput(0, null_out_to_dop_as_wire)
+    # sweep_node.setInput(2, xform_up_vector_node)
+
+    null_start_modeling = inside_node.createNode("null", "start_modeling_here")
+    null_start_modeling.setInput(0, sweep_node)
+
+    edit = inside_node.createNode("edit")
+    edit.parm("group").set("34-35")
+    edit.parmTuple("t").set([0, 0, -0.1])
+    edit.setInput(0, null_start_modeling)
+    
+    null_finish_modeling = inside_node.createNode("null", "finish_modeling_here")
+    null_finish_modeling.setInput(0, edit)
+
+    null_put_fem = inside_node.createNode("null", "Out_to_DOP_as_Cloth_Object")
+    null_put_fem.setInput(0, null_finish_modeling)
+
+
+
+
+
+
+
+    #Skin sections--------------------------
+    delete_node = inside_node.createNode("delete", "delete_bottom_section")
+    delete_node.parm("negate").set(1)
+    delete_node.parm("entity").set(1)
+    delete_node.parm("groupop").set(0)
+    delete_node.parm("pattern").set('0-`chs("../circle1/divs")-1`') #might be setExpression
+    delete_node.setInput(0, null_put_fem)
+
+    add_node = inside_node.createNode("add")
+    add_node.parm("switcher1").set(1)
+    add_node.parm("closedall").set(1)
+    add_node.setInput(0, delete_node)
+
+
+    null_skin = inside_node.createNode("null", "Out_Skin")
+    null_skin.setInput(0, add_node)
+    #----------------------------------------------
+    null_clump = inside_node.createNode("null", "Out_Clumps")
+    null_clump.setInput(0, null_out_to_dop_as_wire)
+    null_clump.setRenderFlag(1)
+    null_clump.setDisplayFlag(1)
+
+
+    #hair guides---------------------------
+    gforeach_node = inside_node.createNode("foreach", "foreach_duplicates")
+    gforeach_node.parm("fortype").set(2)
+    gforeach_node.parm("numrange1").set(0)
+    gforeach_node.parm("numrange2").setExpression('ch("../circle1/divs")-1')
+
+
+    gforeach_node.setInput(0, null_put_fem)
+
+    ggroup_node = gforeach_node.createNode("group")
+    ggroup_node.parm("entity").set(1)
+    ggroup_node.parm("groupop").set(1)
+
+    ggroup_node.parm("rangestart").setExpression('stamp("..", chs("../forstamp"), 0)')
+    ggroup_node.parm("rangeend").setExpression('$N')
+    ggroup_node.parm("select1").set(1)
+    ggroup_node.parm("select2").setExpression('ch("../../circle1/divs")')
+    ggroup_node.setInput(0, gforeach_node.node("each1"))
+
+    gdelete_center = gforeach_node.createNode("delete")
+    gdelete_center.parm("group").set("group1")
+    gdelete_center.parm("negate").set(1)
+    gdelete_center.parm("entity").set(1)
+    gdelete_center.setInput(0, ggroup_node)
+
+    gadd_node = gforeach_node.createNode("add")
+    gadd_node.parm("switcher1").set(1)
+    gadd_node.parm("group").set("group1")
+    gadd_node.setInput(0, gdelete_center)
+
+    gnull_clump = gforeach_node.createNode("null", "Out")
+    gnull_clump.setInput(0, gadd_node)
+    gnull_clump.setRenderFlag(1)
+    gnull_clump.setDisplayFlag(1)
+
+    gforeach_node.layoutChildren()
+    #---------------------------------------------
+
+
+    null_hair_out = inside_node.createNode("null", "Out_Guides")
+    null_hair_out.setInput(0, gforeach_node)
+
+    inside_node.layoutChildren()
+
+
+def lag_function(node_to_connect, node_to_output):
+    inside_node = node_to_connect.parent()
+    
+    transform_1 = inside_node.createNode("xform", "transform_animate_this_to_see_motion")
+    transform_1.setInput(0, node_to_connect)
+    
+    null_to_chops = inside_node.createNode("null", "Out_to_Chops")
+    null_to_chops.setInput(0, transform_1)
+
+    channel_node = inside_node.createNode("channel", "channel_import_chop")
+    channel_node.parm("choppath").set("../chopnet_lat/Out")
+    channel_node.parm("method").set(1)
+    channel_node.setInput(0, null_to_chops)
+
+    #vopsop----------------------------
+    vop_node = inside_node.createNode("vopsop", "vopsop_chop_lat")
+    vop_node.setInput(0, node_to_connect)
+    vop_node.setInput(1, channel_node)
+
+    global_node = vop_node.node("global1")
+    output_node = vop_node.node("output1")
+
+    inttofloat_node= vop_node.createNode("inttofloat")
+    inttofloat_node.setInput(0, global_node, 8)
+
+    div_node = vop_node.createNode("divide")
+    div_node.setInput(0, inttofloat_node, 0)
+    div_node.setInput(1, global_node, 11)
+
+    ramp_node = vop_node.createNode("rampparm", "ramp_pscale")
+    ramp_node.parm("parmname").set("mix_ramp")
+    ramp_node.parm("parmlabel").set("Mix Ramp")
+    ramp_node.parm("rampshowcontrolsdefault").set(0)
+    ramp_node.parm("ramptype").set(1)
+    ramp_node.setInput(0, div_node, 0)
+
+    import_node = vop_node.createNode("importattrib")
+    import_node.parm("attrib").set("P")
+    import_node.parm("input_index").set(1)
+
+    mix_node = vop_node.createNode("mix")
+    mix_node.setInput(0, global_node, 0)
+    mix_node.setInput(1, import_node, 1)
+    mix_node.setInput(2, ramp_node, 0)
+
+    output_node.setInput(0, mix_node, 0)
+
+    chop_net = inside_node.createNode("chopnet", "chopnet_lat")
+    geo_node = chop_net.createNode("geometry")
+    geo_node.parm("soppath").set("../../Out_to_Chops")
+    geo_node.parm("method").set(1)
+
+    jiggle_node = chop_net.createNode("jiggle")
+    jiggle_node.setInput(0, geo_node)
+
+    lag_node = chop_net.createNode("lag")
+    lag_node.setInput(0, geo_node)
+
+    switch_node = chop_net.createNode("switch", "switch_depending_your_needs")
+    switch_node.setNextInput(jiggle_node)
+    switch_node.setNextInput(lag_node)
+
+    null_out = chop_net.createNode("null", "Out")
+    chop_net.layoutChildren()
+    null_out.setInput(0, switch_node)
+
+    vop_node.layoutChildren()
+    #vop-----------------------
+
+
+    node_to_output.setNextInput(vop_node)
+
+
+def vopsop_pscale_function(node):
+    global_node = node.node("global1")
+
+    inttofloat_node= node.createNode("inttofloat")
+    inttofloat_node.setInput(0, global_node, 8)
+
+    div_node = node.createNode("divide")
+    div_node.setInput(0, inttofloat_node, 0)
+    div_node.setInput(1, global_node, 11)
+
+    ramp_node = node.createNode("rampparm", "ramp_pscale")
+    ramp_node.parm("parmname").set("pscale_ramp")
+    ramp_node.parm("parmlabel").set("Pscale Ramp")
+    ramp_node.parm("rampshowcontrolsdefault").set(0)
+    ramp_node.parm("ramptype").set(1)
+    ramp_node.setInput(0, div_node, 0)
+
+    parm_node = node.createNode("parameter")
+    parm_node.parm("parmname").set("ramp_mult")
+    parm_node.parm("parmlabel").set("Ramp Mult")
+    parm_node.parm("floatdef").set(1)
+    parm_node.parm("rangeflt2").set(10)
+
+    mult_node = node.createNode("multiply")
+    mult_node.setInput(0, ramp_node, 0)
+    mult_node.setInput(1, parm_node, 0)
+
+    bind_node = node.createNode("bind")
+    bind_node.parm("parmname").set("pscale")
+    bind_node.parm("useasparmdefiner").set(1)
+    bind_node.parm("exportparm").set(2)
+    bind_node.setInput(0, mult_node)
+
+    bind_node = node.createNode("bind")
+    bind_node.parm("parmname").set("width")
+    bind_node.parm("useasparmdefiner").set(1)
+    bind_node.parm("exportparm").set(2)
+    bind_node.setInput(0, mult_node)
+
+
+
+
+    lin = hou.rampBasis.Linear
+    my_ramp = hou.Ramp((lin, lin), (0, 1), (1, 0))
+    node.parm("pscale_ramp").set(my_ramp)
+
+    node.layoutChildren()
+
+
+def drop_fabio(node):
+    """
+    where we drop the node and connect the nulls to the inputs
+    :param parent: parent node to check for skin, clumps and guides
+    :return:
+    """
+    skin = node.node("Out_Skin")
+    clump = node.node("Out_Clumps")
+    guides = node.node("Out_Guides")
+    nameing = node.name()
+
+    try:
+        hair_system = node.parent().createNode("Fabio_Hair_System", "Fabio_Hair_System_"+nameing)
+    except:
+        hair_system = node.parent().createNode("test_Fabio_Hair_System", "test_Fabio_Hair_System_"+nameing)
+
+    hair_system.parm("skin").set(hair_system.relativePathTo(skin))
+    hair_system.parm("hair_guides").set(hair_system.relativePathTo(guides))
+    hair_system.parm("clump_guides").set(hair_system.relativePathTo(clump))
+
+    hair_system.parm("full_interpolation").set(1)
+    hair_system.parm("preview_density").set(5000)
+    hair_system.parm("clumpradius").set(0.05)
+    position = node.position()
+    hair_system.setPosition((position[0], position[1]-1))
+
+
+def main():
+    s = hou.selectedNodes()
+    if len(s) == 0:
+        de = hou.node("/obj").createNode("geo", "Hair_Curve")
+        de.moveToGoodPosition()
+        try:
+            de.node("file1").destroy()
+        except:
+            pass
+        print(de)
+        place_nodes(de, curve_provided=False)
+        drop_fabio(de)
+    else:
+        for i in s:
+            place_nodes(i, i.displayNode())
+            drop_fabio(i)
+
+main()]]></script>
+  </tool>
+
+  <tool name="split1" label=" " icon="opdef:/dk::Object/Fabio_Hair_System::1.11.02?split.png">
+    <script scriptType="python"><![CDATA[]]></script>
+  </tool>
+
+  <tool name="split2" label=" " icon="opdef:/dk::Object/Fabio_Hair_System::1.11.02?split.png">
+    <script scriptType="python"><![CDATA[]]></script>
+  </tool>
+
+  <tool name="hair_current" label="Hair 16&gt;19" icon="opdef:/Object/fabio_hair_system?IconImage">
+    <script scriptType="python"><![CDATA[import vexpressionmenu 
+
+purple_color = hou.Color((0.565, 0.494, 0.863))
+blue_dark_color = hou.Color((0.094, 0.369, 0.69))
+green_color = hou.Color((0.302, 0.525, 0.114))
+
+def populate_hair(node_list):
+    for i in node_list:
+        if i.type().nameComponents()[2] == "geo":
+            # Setting up the Geo guide curves needed for the hair system  --------------
+            node_to_branch = i
+            
+            # finding the display node to use that one.
+            node_to_branch_childrens = node_to_branch.children()
+            node_to_branch_children_display = None
+            for ic in node_to_branch_childrens:     
+                try:
+                    if ic.isDisplayFlagSet() is True:                    
+                        node_to_branch_children_display = ic
+                except:
+                    pass
+            if node_to_branch_children_display is None:
+                hou.ui.displayMessage("Make sure you have a sop node with display flag")
+                return
+                    
+            null_to_fabio = node_to_branch.createNode("null", "Out_to_Fabio")
+            null_to_fabio.setInput(0, node_to_branch_children_display)
+            node_to_branch_children_display_pos = node_to_branch_children_display.position()
+            null_to_fabio.setPosition([node_to_branch_children_display_pos[0], node_to_branch_children_display_pos[1]-1   ])
+                        
+            color_node = hou.Color((.5,.5,0))
+            parent = node_to_branch.parent()                                      
+            nameing  = i.name()
+            ppos = i.position()                                        
+            
+            lvl = i.parent()
+            parent =lvl.createNode("geo", nameing +"_Grooming")
+            # try:
+            #     parent.node("file1").destroy()
+            # except:
+            #     pass
+#            parent.parm("vm_rendervisibility").set("")
+            parent.setDisplayFlag(0)
+            parent.setPosition([ppos[0], ppos[1]-1])
+
+            parent.parm("vm_rendersubdcurves").set(1)
+            parent.parm("vm_rendersubd").set(1)
+            parent.parm("viewportlod").set(5)
+
+                              
+            merge = parent.createNode("object_merge", "object_merge_rest", run_init_scripts=False, load_contents=True, exact_type_name=True)
+            merge.move(hou.Vector2(-5.25657, 15.621))
+            merge.parm("xformtype").set("local")
+            # merge.parm("objpath1").set(merge.relativePathTo(node_to_branch))
+            merge.parm("objpath1").set(merge.relativePathTo(null_to_fabio))
+            
+            merge_anim = parent.createNode("object_merge", "object_merge_Animation")
+            merge_anim.setPosition([-1.91292, 15.621])
+            
+            switch_node = parent.createNode("switch", "switch_for_animation_object")
+            switch_node.setPosition([-1.50449, 12.3414])
+            switch_node.setInput(0, merge)
+            switch_node.setInput(1, merge_anim)
+            
+            out_anim_node = parent.createNode("null", "Out_anim_object")
+            out_anim_node.setPosition([-1.50449, 11.3464])
+            out_anim_node.setInput(0, switch_node)
+            
+            
+            facet = parent.createNode("facet")
+            facet.parm("prenml").set(1)
+            facet.setInput(0, merge, 0)
+            facet.setPosition([-5.25532, 15.121])
+            
+            # Code for /obj/geo2_Grooming/Out_Skin
+            out_skin_node = parent.createNode("null", "Out_Skin")
+            out_skin_node.move(hou.Vector2(-5.25532, 14.3513))   
+            out_skin_node.setColor(hou.Color([0.5, 0.5, 0]))
+            out_skin_node.setInput(0, facet, 0)
+            out_skin_node.setTemplateFlag(1)
+    
+            # Code for /obj/geo2_Grooming/group_edges
+            group_edges_node = parent.createNode("group", "group_edges")
+            group_edges_node.move(hou.Vector2(-5.88276, 10.0204))
+            group_edges_node.parm("crname").set("open")                    
+            group_edges_node.parm("groupedges").set(1)
+            group_edges_node.setInput(0, out_skin_node, 0)
+
+            polycap_node = parent.createNode("polycap", "polycap1")
+            polycap_node.move(hou.Vector2(-5.88276, 8.89093))    
+            polycap_node.parm("group").set("open")
+            polycap_node.setInput(0, group_edges_node, 0)
+                           
+            vdbfrompoly_node = parent.createNode("vdbfrompolygons", "vdbfrompolygons_control")
+            vdbfrompoly_node.move(hou.Vector2(-5.88401, 7.9691))
+            vdbfrompoly_node.parm("voxelsize").set(0.035000000000000003)
+            vdbfrompoly_node.parm("useworldspaceunits").set(1)
+            vdbfrompoly_node.parm("exteriorband").set(0.10000000000000001)    
+            vdbfrompoly_node.parm("fillinterior").set(1)
+            vdbfrompoly_node.setInput(0, polycap_node, 0)
+
+
+
+            # subnet grooming
+            subnet_grooming_node = parent.createNode("subnet", "subnet_for_grooming")
+            subnet_grooming_node.setInput(0, out_skin_node, 0 )
+            subnet_grooming_node.setInput(1, vdbfrompoly_node, 0 )
+            subnet_grooming_node.setPosition([-12.3873, 6.08424])
+
+            subnet_grooming_stiky = parent.createStickyNote("grooming")
+            subnet_grooming_stiky.setText("""Start Grooming Here!!!!""")
+            subnet_grooming_stiky.setPosition( [-13.1373, 4.87174] )
+            subnet_grooming_stiky.setSize( [2.5, 2.5] )
+            subnet_grooming_stiky.setColor(green_color)
+
+            switch_fur_starter = add_fur_nodes(subnet_grooming_node)
+
+
+            guidedraw_node = subnet_grooming_node.createNode("guidedraw", "guidedraw_create_guides")
+            guidedraw_node.move(hou.Vector2(-10.4488, 6.86508))
+            guidedraw_node.parm("stroke_projgeoinput")
+            guidedraw_node.parm("stroke_radius").set(0.21587030589580536)
+            guidedraw_node.parm("stroke_projtype")
+            guidedraw_node.parm("stroke_tool")
+
+            guidedraw_node.setInput(0, switch_fur_starter, 0)
+            guidedraw_node.setInput(1, subnet_grooming_node.indirectInputs()[0], 0)
+            guidedraw_node.setInput(2, subnet_grooming_node.indirectInputs()[1], 0)
+
+
+            guidedraw_node.setDisplayFlag(1)
+
+
+
+            guidegroom_node = subnet_grooming_node.createNode("guidegroom", "guidegroom_shape_curves")
+            guidegroom_node.move(hou.Vector2(-10.4488, 5.94466))
+            try:
+                guidegroom_node.parm("reset").set("0")
+                guidegroom_node.parm("recache").set("0")
+                guidegroom_node.parm("stroke_targetlength").set(0.001)                      
+                guidegroom_node.parm("savefalloffpreset").set("0")
+            except:
+                guidegroom_node.parm("tool").set(5)
+            
+            guidegroom_node.bypass(True)
+            for i in range(3):
+                guidegroom_node.setInput(i, guidedraw_node, i)
+
+            guideprocess_node = subnet_grooming_node.createNode("guideprocess", "guideprocess1")
+            guideprocess_node.move(hou.Vector2(-10.4488, 4.9615))
+            guideprocess_node.bypass(True)
+            for i in range(3):
+                guideprocess_node.setInput(i, guidegroom_node, i)
+                
+            hairclump_node = subnet_grooming_node.createNode("hairclump", "hairclump1")
+            hairclump_node.move(hou.Vector2(-10.4488, 3.9156))
+            hairclump_node.bypass(True)
+            # hairclump_node.setRenderFlag(True)
+            # hairclump_node.setTemplateFlag(True)
+            # hairclump_node.parm("legacymasking").set(1)
+            for i in range(3):
+                hairclump_node.setInput(i, guideprocess_node, i)
+
+            color_viz_clumps_node = subnet_grooming_node.createNode("color", "color_viz_clumps")
+            color_viz_clumps_node.parm("class").set(1)
+            color_viz_clumps_node.parm("colortype").set(4)
+            color_viz_clumps_node.parm("rampattribute").set("clumpid")
+            color_viz_clumps_node.setPosition([-12.8459, 3.02279])
+            color_viz_clumps_node.setInput(0, hairclump_node, 0)
+            
+            timeshift_node = subnet_grooming_node.createNode("timeshift")
+            timeshift_node.setPosition([-10.4488, 2.27355])
+            timeshift_node.setInput(0, hairclump_node, 0)
+            timeshift_node.parm("frame").setExpression("$FSTART")
+                                       
+            attrib_len = subnet_grooming_node.createNode("attribcreate", "attribcreate_len")
+            attrib_len.parm("name1").set("lenn")
+            attrib_len.parm("varname1").set("LENN")
+            attrib_len.parm("class1").set(1)
+            attrib_len.parm("value1v1").setExpression('arclen(opinputpath(".",0), $PR,0,1)')
+            attrib_len.parm("createvarmap1").set(1)
+            attrib_len.bypass(1)
+            attrib_len.setInput(0, timeshift_node)
+            attrib_len.setPosition([ timeshift_node.position()[0], timeshift_node.position()[1]-1 ] )
+
+            group_by_len = subnet_grooming_node.createNode("group", "group_view_curves_by_len")
+            group_by_len.parm("filter").setExpression("$LENN<.3")
+            group_by_len.parm("groupop").set(2)
+            group_by_len.bypass(1)
+            group_by_len.setInput(0, attrib_len)
+            group_by_len.setPosition([ attrib_len.position()[0], attrib_len.position()[1]-1 ] )
+                        
+            color_del = subnet_grooming_node.createNode("color", "color_viz_delete_short_curves")
+            color_del.parm("group").set("group_view_curves_by_len")
+            color_del.parmTuple("color").set([1,0,0,])
+            color_del.setInput(0, group_by_len, 0)
+            color_del.bypass(1)
+            color_del.setPosition([ group_by_len.position()[0], group_by_len.position()[1]-1 ] )
+            
+            del_by_len = subnet_grooming_node.createNode("blast", "blast_by_len")
+            del_by_len.parm("group").set("group_view_curves_by_len")
+            del_by_len.bypass(1)
+            del_by_len.setInput(0, color_del)            
+            del_by_len.setPosition([ color_del.position()[0], color_del.position()[1]-1 ] )                                                                      
+
+            output_node = subnet_grooming_node.createNode("output")
+            output_node.setInput(0, del_by_len)
+
+            subnet_grooming_node.layoutChildren()
+
+
+            # this is the second timeshift node
+            timeshift_node2 = hou.copyNodesTo([timeshift_node], parent)[0]
+            timeshift_node2.setInput(0, out_skin_node, 0)
+            timeshift_node2.setPosition([-5.20555, 2.27355])
+            
+            guidedeform_node = parent.createNode("guidedeform", "guidedeform1", run_init_scripts=False, load_contents=True, exact_type_name=True)
+            guidedeform_node.parm("method").set(1)
+            guidedeform_node.setPosition([-3.16916, -1.83023])
+            guidedeform_node.setInput(0, subnet_grooming_node, 0)
+            guidedeform_node.setInput(1, timeshift_node2, 0)
+            guidedeform_node.setInput(2, out_anim_node, 0)                                       
+
+            trail_node = parent.createNode("trail", "trail1", run_init_scripts=False, load_contents=True, exact_type_name=True)
+            trail_node.setPosition([-5.86566, -2.79129])
+            trail_node.parm("result").set("velocity")
+            trail_node.setInput(0, guidedeform_node, 0)
+            
+            rest_curves = parent.createNode("rest", "rest_curves")
+            rest_curves.setInput(0, trail_node, 0)
+            rest_curves.setInput(1, subnet_grooming_node, 0)
+            rest_curves.setPosition( [-5.76004, -3.62106])
+
+
+            attribcreate_width_node = parent.createNode("attribcreate", "attribcreate_width")
+            attribcreate_width_node.parm("name1").set("width")
+            attribcreate_width_node.parmTuple("default1v").set([0.005, 0, 0, 0])
+            attribcreate_width_node.parmTuple("value1v").set([0.005, 0, 0, 0])
+            attribcreate_width_node.setInput(0, rest_curves, 0)
+            attribcreate_width_node.setPosition([-5.76304, -4.55499])
+
+# we changing all this code for attribute create,  that way we dont need to know how many points per curve
+#             point_wrangler_width = parent.createNode("attribwrangle", "pointwrangle_width_if_needed")
+#             point_wrangler_width.parm("class").set(2)
+#             point_wrangler_width.parm("snippet").set('''
+# int ammo = `chs("../subnet_for_grooming/guidedraw_create_guides/outputsegs")`;
+# float mod = (@ptnum % ammo)+1;
+# float perc = mod/ammo;
+#
+# float ramper = chramp("width_ramp", 1) * ch("width_scale",.025);
+# @width = perc * ramper;
+#             ''')
+#             point_wrangler_width.setInput(0, rest_curves, 0)
+#             point_wrangler_width.setPosition([-5.76304, -4.55499])
+#             point_wrangler_width.setColor(hou.Color([.6,.6,.6]))
+#
+#             vexpressionmenu.createSpareParmsFromChCalls(point_wrangler_width, 'snippet')
+# #            print("about to cook")
+# #            point_wrangler_width.cook(force=True)
+#             point_wrangler_width.parm("width_scale").set(.025)
+#
+#             ramp_point_wrangler_width = point_wrangler_width.parm('width_ramp')
+#
+#             bases =  [hou.rampBasis.Linear] * 3
+#             keys =   [0.0, 0.75, 1]
+#             values = [1.0, 1.0, .1]
+#             ramp_point_wrangler_width.set(hou.Ramp(bases, keys, values))
+#
+#             point_wrangler_width_stiky = parent.createStickyNote("my_sticky")
+#             point_wrangler_width_stiky.setText("""pointwrangle_width
+# 'width' for hair collision while simulating;
+# attribute use for Karma/Mantra in case you want to render directly from
+# _Grooming object curves and not use the Fabio hda(fabio will let you set the
+# width for hairs, clumbs, crazy, guards independenlty)
+# 'hairgen1' node also set the attribute
+# you can byass one or the other, no need to recompute twice, so you can by pass one or the other
+#             """)
+#             wp = point_wrangler_width.position()
+#             point_wrangler_width_stiky.setPosition([ wp[0]-2, wp[1]-3 ]  )
+#             point_wrangler_width_stiky.setColor(hou.Color([.6,.6,.6]))
+#
+
+
+            
+            point_attibs_stiky = parent.createStickyNote("shader_points_attribs")
+            point_attibs_stiky.setText("""Fabio Shader 'Hair_Shader_Master' can use certain point attributes to shade the hair 
+any 'Bind' node that have 'on_hair_shader' inside the shader can be use to multiply the value(you can modify the shader on your own
+to set it the attribute value instead multiply by bypassing the multiply node)
+
+point attributes:
+color_on_hair_shader_mult (same as Cd) vector
+
+r_int_on_hair_shader_mult float
+r_size_on_hair_shader_mult float
+r_shift_on_hair_shader_mult float
+
+trt_int_on_hair_shader_mult float
+trt_quality_on_hair_shader_mult float
+trt_color_on_hair_shader_mult float
+trt_size_on_hair_shader_mult float
+trt_size_on_hair_shader_mult float
+
+g_int_on_hair_shader_mult float
+g_size_on_hair_shader_mult float
+g_shift_on_hair_shader_mul float
+
+transmition_int_on_hair_shader_mult float
+transmision_quality_on_hair_shader_mult float
+transmision_size_on_hair_shader_mult float
+transmision_shift_on_hair_shader_mult float
+
+opacity_color_on_hair_shader_mult float
+fake_min_on_hair_shader_mult float
+fake_max_on_hair_shader_mult float
+            """)
+
+            point_attibs_stiky.setPosition( [3.80052, 8.89093] )
+            #point_attibs_stiky.setColor(hou.Color([.6,.6,.6]))
+            point_attibs_stiky.setSize([5.22922, 9.4808])
+            
+            uv_fabio = parent.createNode("texture", "uv_fabio_texture")
+            uv_fabio.parm("uvattrib").set("uv_fabio")
+            uv_fabio.parm("type").set(8)
+            uv_fabio.parm("coord").set(1)
+            uv_fabio.setColor(purple_color)            
+            uv_fabio.setInput(0, attribcreate_width_node, 0)
+            uv_fabio.setPosition([-5.76004, -5.33954])
+            # uv_fabio.bypass(False)
+                                    
+            to_dops_node = parent.createNode("null", "Dops_Helper")
+            to_dops_node.setPosition([-5.76004, -8.58784])
+            to_dops_node.setInput(0, uv_fabio, 0)
+
+
+
+
+            subnet_skin_uv_to_curve_node = parent.createNode("subnet", "subnet_skin_uv_to_curve_for_texturing")
+            subnet_skin_uv_to_curve_node.setInput(0, to_dops_node, 0)
+            subnet_skin_uv_to_curve_node.setInput(1, guidedeform_node, 2)
+            subnet_skin_uv_to_curve_node.setInput(2, guidedeform_node, 1)
+
+            subnet_skin_uv_to_curve_node.setPosition([-5.76349, -10.3977])
+            
+            rest_node = subnet_skin_uv_to_curve_node.createNode("rest", "rest")
+            rest_node.setInput(0, subnet_skin_uv_to_curve_node.indirectInputs()[1], 0)
+            rest_node.setInput(1, subnet_skin_uv_to_curve_node.indirectInputs()[2], 0)
+
+            guide_skin_attrib_look_up_node = subnet_skin_uv_to_curve_node.createNode("guideskinattriblookup", "guideskinattriblookup_get_uv_to_curve_points")
+            guide_skin_attrib_look_up_node.parm("vertattribs").set("uv")
+            guide_skin_attrib_look_up_node.setInput(0, subnet_skin_uv_to_curve_node.indirectInputs()[0], 0)
+            guide_skin_attrib_look_up_node.setInput(1, rest_node, 0)
+
+            attribute_promote_node = subnet_skin_uv_to_curve_node.createNode("attribpromote", "attribpromote_uv_to_points")
+            attribute_promote_node.parm("inname").set("uv")
+            attribute_promote_node.parm("inclass").set(1)
+            attribute_promote_node.parm("useoutname").set(1)
+            attribute_promote_node.parm("outname").set("uv")
+            attribute_promote_node.setInput(0, guide_skin_attrib_look_up_node, 0)
+
+            subnet_output_node = subnet_skin_uv_to_curve_node.createNode("output", "output_Out")
+            subnet_output_node.setInput(0, attribute_promote_node, 0)
+            
+            subnet_skin_uv_to_curve_node.layoutChildren()
+
+
+
+
+
+
+
+
+            
+            
+            
+            
+            
+            
+            hairgen = parent.createNode("hairgen")
+            # hairgen.setInput(0, timeshift_node2, 0)
+            hairgen.setInput(0, guidedeform_node, 1)
+            hairgen.setInput(2, guidedeform_node, 2)
+
+            hairgen.setInput(1, subnet_skin_uv_to_curve_node, 0)
+            # hairgen.setInput(2, out_anim_node, 0)
+            hairgen.parm("uniformguidesegments").set(1)
+            hairgen.parm("uniformguidesegments").set(1)
+
+            hairgen.parm("growunguided").set(0)
+            hairgen.parm("outputthicknessattrib").set(0)
+            hairgen.parm("vertattribs").set("uv")
+            hairgen.parm("guidepointattribs").set("* ^uv")
+            hairgen.parm("guideprimattribs").set("*")
+            hairgen.bypass(True)                    
+            hairgen.setPosition([-3.16916, -9.54659] )
+            hairgen.setColor(purple_color)
+            
+            switch_base_hairgen_is_bypassed = parent.createNode("switch", "switch_base_hairgen_is_bypassed")
+            exp = """
+curret_node = hou.pwd()
+hair_gen_node = curret_node.inputs()[0]
+if hair_gen_node.isBypassed():
+    return 1
+else:
+    return 0
+"""
+            switch_base_hairgen_is_bypassed.parm("input").setExpression(exp, hou.exprLanguage.Python)
+            switch_base_hairgen_is_bypassed.setNextInput(hairgen,0)
+            switch_base_hairgen_is_bypassed.setNextInput(hairgen,1)
+            switch_base_hairgen_is_bypassed.setPosition([-3.16916, -10.5117] )
+            
+            
+            
+            fabio_attributes = parent.createNode("fabioattributes")
+            fabio_attributes.setInput(0, switch_base_hairgen_is_bypassed, 0)
+            fabio_attributes.setInput(1, guidedeform_node, 2)
+
+            fabio_attributes.bypass(True) 
+            fabio_attributes.setPosition([-3.16916, -11.1686])
+            fabio_attributes.setColor(purple_color)
+            
+            fabio_attributes_stiky = parent.createStickyNote("fabioattrib")
+            fabio_attributes_stiky.setPosition([-0.933933, -16.395])
+            fabio_attributes_stiky.setSize([6.56894, 3.14892])
+            fabio_attributes_stiky.setColor(purple_color)
+            fabio_attributes_stiky.setText("""If you planning to use the grooming/hairgen node to render,
+unbypass PURPLE nodes will add the same attributes than Fabio_Hair_System
+into the geometry.
+
+- uv_fabio_texture
+- hairgen1
+- fabioattributes
+- attributedelete_not_needed_for_rendering
+            """)                       
+
+            attribdelete = parent.createNode("attribdelete", "attribedelete_not_needed_for_rendering")
+            attribdelete.parm("ptdel").set("gluetoanimation rest restroot traillen tightness")
+            attribdelete.parm("primdel").set("guideorigin restroot skinprim skinprimuv skinqueryP")
+            attribdelete.parm("dtldel").set("myuv")
+
+            attribdelete.parm("dovtxdel").set(0)
+            attribdelete.parm("dovtxdel").set(0)
+            attribdelete.parm("dodtldel").set(0)
+            attribdelete.setInput(0, fabio_attributes,0) 
+            attribdelete.setPosition([-3.16916, -11.7944])
+            attribdelete.setColor(purple_color)
+            attribdelete.bypass(True)
+            
+            out_guides_node = parent.createNode("null", "Out_Guides")
+            out_guides_node.setPosition([switch_base_hairgen_is_bypassed.position()[0], switch_base_hairgen_is_bypassed.position()[1]-2]  )
+            out_guides_node.setInput(0, attribdelete, 0)
+            out_guides_node.setRenderFlag(1)
+
+
+            # this is needed for Mantra
+            delete_node = parent.createNode("delete")
+            delete_node.parm("entity").set(0)
+            delete_node.setInput(0, out_guides_node, 0)
+            delete_node.parm("groupop").set(1)
+            delete_node.parmTuple("select").set([9, 10])
+            delete_node.setPosition([out_guides_node.position()[0], out_guides_node.position()[1]-1 ])
+            
+            null_clumps_out = parent.createNode("null", "Out_Clumps")
+            null_clumps_out.setInput(0, delete_node,0)
+            null_clumps_out.setColor(color_node)      
+            null_clumps_out.setPosition([delete_node.position()[0], delete_node.position()[1]-1 ])
+
+            groom_for_mantra_stiky = parent.createStickyNote("info_mantra_or_karma")
+            groom_for_mantra_stiky.setPosition( [-5.76349, -15.2556])
+            groom_for_mantra_stiky.setSize( [4.02267, 2.1268] )
+            groom_for_mantra_stiky.setText("""Reduce the hair guides so Fabio
+            can use them for clumps in case they where not provided.
+            """)
+
+
+
+
+            #-----------------
+
+
+
+            # to make it compatible with the hair gen obj level node of Sesi
+            out_rest_guides_null_node = parent.createNode("null", "Out_Rest_guides")
+            out_rest_guides_null_node.setInput(0, uv_fabio, 0)
+            out_rest_guides_null_node.setPosition( [  uv_fabio.position()[0]-2 , uv_fabio.position()[1]-2   ]     )
+
+
+            necesary_nodes = [
+                {"name": "OUT_RESTGUIDES", "input": out_rest_guides_null_node},  #
+                {"name": "OUT_RESTSKIN", "input": guidedeform_node.name() + "/output2/"}, #
+                {"name": "OUT_ANIMGUIDES", "input": out_guides_node},  #
+                {"name": "OUT_ANIMSKIN", "input": guidedeform_node.name() + "/output3/"} #
+            ]
+            counter = 0
+            intial_pos = [3.85739, 1.46315]
+            for dict_item in necesary_nodes:
+                object_merge_node = parent.createNode("object_merge", "object_merge_for_" + dict_item["name"])
+                object_merge_node.setPosition( [ intial_pos[0] + counter, intial_pos[1] ] )
+
+                # print(type(object_merge_node))
+                if str(type(dict_item["input"])) == "<class 'hou.SopNode'>":
+                    # print("is sop")
+                    object_merge_node.parm("objpath1").set( "../" + str(dict_item["input"].name() )     )
+                else:
+                    # print("no sop")
+                    object_merge_node.parm("objpath1").set( "../" + str(dict_item["input"] ) )
+
+                null_node = parent.createNode("null", dict_item["name"])
+                null_node.setPosition([intial_pos[0] + counter, intial_pos[1] - 2])
+
+                null_node.setInput(0, object_merge_node, 0)
+                counter = counter + 2.5
+
+            # sticky note with info on how to use it with HairGen objNode of Sesi
+            fabio_attributes_stiky = parent.createStickyNote("for_hairGen")
+            fabio_attributes_stiky.setPosition( [3.46265, -1.42645] )
+            fabio_attributes_stiky.setSize(  [10.115, 4.14892] )
+            fabio_attributes_stiky.setColor(blue_dark_color)
+            fabio_attributes_stiky.setText("""This are export in case you want to use
+            the hairGen at Obj/ level that Sesi provides for generate extra curves.
+            on /obj/{your_hairgen}/sourcegroomobject select this object,
+            dont use the conection of the second input
+            """)
+
+
+
+
+                #----------------------------------------------
+            # setting for making the hair system at object level
+            obj_pos = parent.position()
+            obj_pos_x = obj_pos[0]
+            obj_pos_y = obj_pos[1]
+            # nameing  = parent.name()
+            hair_system = parent.parent().createNode("fabio_hair_system", "Fabio_Hair_System_"+nameing)
+            hair_system.setPosition([obj_pos_x, obj_pos_y-1])
+            # hair_system.parm("skin").set(hair_system.relativePathTo(out_skin_node))
+            hair_system.parm("skin").set(hair_system.relativePathTo(guidedeform_node)+"/output3")
+            hair_system.parm("hair_guides").set(hair_system.relativePathTo(out_guides_node))
+#            hair_system.parm("use_clumps").set(0)
+            hair_system.parm("clump_guides").set(hair_system.relativePathTo(null_clumps_out))
+#            hair_system.parm("full_interpolation").set(1)                    
+            # Copying the material to the grooming in case they want to use the haircore for rendering
+
+
+            # todo
+            #  creeate the matnet and put the 2 shaders with a switch
+            #  replace this with the actual HDA
+
+            matnet_network = parent.createNode("matnet")
+
+            fabio_material = matnet_network.createNode("fabio_material")
+            fabio_material_x = matnet_network.createNode("fabio_material_x")
+
+            collect_fabio_materials_x = matnet_network.createNode("collect", "collect_fabio_materialX")
+            collect_fabio_materials_x.setInput(0, fabio_material_x, 0)
+
+            matnet_network.layoutChildren()
+            parent.parm("shop_materialpath").set( parent.relativePathTo(collect_fabio_materials_x)  )
+
+
+
+
+            # print("adding image to bg")
+            # image(fabio_attributes)
+
+
+def add_fur_nodes(parent):
+    line = parent.createNode("line")
+    line.parmTuple("dir").set([0,0,1])
+    line.parm("dist").set(0.05)
+    line.parm("points").set(4)
+
+    group_root = parent.createNode("groupcreate", "group_root")
+    group_root.parm("groupname").set("roots")
+    group_root.parm("grouptype").set(1)
+    group_root.parm("basegroup").set("0")
+
+    group_root.setInput(0, line, 0)
+
+    copytopoints = parent.createNode("copytopoints")
+    copytopoints.setInput(0, group_root, 0)
+    copytopoints.setInput(1, parent.indirectInputs()[0], 0)
+
+
+    group_for_fur = parent.createNode("groupcreate", "group_for_fur")
+    group_for_fur.parm("groupname").set("for_fur")
+    group_for_fur.setInput(0, copytopoints, 0)
+
+    null_No_fur= parent.createNode("null", "null_No_fur")
+
+    switch_fur_starter = parent.createNode("switch", "switch_fur_starter")
+    switch_fur_starter.setNextInput(group_for_fur)
+    switch_fur_starter.setNextInput(null_No_fur)
+
+    return switch_fur_starter
+
+
+
+def image(fabio_attibute):
+    for i in range(0,4):
+        try:
+            editor = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor, i)
+            pane = editor.pane()
+            tabs = pane.tabs()
+            for tab in tabs:
+                # print(tab)
+                # print(tab.type())
+                if str(tab.type()) == "paneTabType.NetworkEditor":
+                    # print("founded")
+                    # print(tab)
+                    tab.setCurrentNode(fabio_attibute)
+                    image = hou.NetworkImage()
+                    image.setPath('opdef:/Sop/fabioattributes::1.1?fabio_original_inverted.jpg')
+                    image.setRect( hou.BoundingRect(1.5949, -11.3052, 5.05894 , -6.34249) )
+
+                    editor.setBackgroundImages([image])
+        except Exception as e :
+            pass
+            # print(e)
+
+            
+                    
+populate_hair( hou.selectedNodes() )]]></script>
+  </tool>
+</shelfDocument>
