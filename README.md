@@ -45,4 +45,8 @@ If everything went well,
 2. Press the little Plus + icon and there will be a new one call "Fabio_Hair"
 
 #
+
+visit 
+https://polybevel.wixsite.com/fabio-hair-system for more information
+
 Enjoy.
