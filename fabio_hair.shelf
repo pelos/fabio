@@ -1079,7 +1079,6 @@ def fem_function(node_to_connect, node_to_output):
     dopimport_embedded.parm("geodatapath").setExpression("EmbeddedGeometry")
     # print(emb_null)
 
-    # todo check line 27
     # dopimport_embedded.setInput(0, emb_null, 0)
 
 
@@ -2262,7 +2261,7 @@ into the geometry.
 
 
             # print("adding image to bg")
-            # image(fabio_attributes)
+            image(fabio_attributes)
 
 
 def add_fur_nodes(parent):
