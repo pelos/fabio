@@ -2259,7 +2259,6 @@ into the geometry.
 
 
 
-
             # print("adding image to bg")
             image(fabio_attributes)
 
