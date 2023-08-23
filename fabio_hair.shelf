@@ -1078,7 +1078,6 @@ def fem_function(node_to_connect, node_to_output):
     dopimport_embedded.parm("geodatapath").setExpression("EmbeddedGeometry")
     # print(emb_null)
 
-    # todo check line 27
     # dopimport_embedded.setInput(0, emb_null, 0)
 
 
@@ -1908,7 +1907,7 @@ def populate_hair(node_list):
             attribcreate_width_node.setInput(0, rest_curves, 0)
             attribcreate_width_node.setPosition([-5.76304, -4.55499])
 
-# we changing all this code for attribute create,  that way we dont need to know how many points per curve
+# we're changing all this code for attribute create,  that way we don't need to know how many points per curve
 #             point_wrangler_width = parent.createNode("attribwrangle", "pointwrangle_width_if_needed")
 #             point_wrangler_width.parm("class").set(2)
 #             point_wrangler_width.parm("snippet").set('''
@@ -2113,7 +2112,13 @@ into the geometry.
             attribdelete.setPosition([-3.16916, -11.7944])
             attribdelete.setColor(purple_color)
             attribdelete.bypass(True)
-            
+
+
+            # todo here try to do an output node
+            output_node = parent.createNode("output")
+            output_node.setInput(0, attribdelete, 0)
+            output_node.setPosition([ -0.111125, -12.9139 ])
+
             out_guides_node = parent.createNode("null", "Out_Guides")
             out_guides_node.setPosition([switch_base_hairgen_is_bypassed.position()[0], switch_base_hairgen_is_bypassed.position()[1]-2]  )
             out_guides_node.setInput(0, attribdelete, 0)
@@ -2227,9 +2232,8 @@ into the geometry.
 
 
 
-
             # print("adding image to bg")
-            # image(fabio_attributes)
+            image(fabio_attributes)
 
 
 def add_fur_nodes(parent):
