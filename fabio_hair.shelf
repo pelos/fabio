@@ -1173,7 +1173,7 @@ def fem_function(node_to_connect, node_to_output):
     color0.parmTuple("color").set([0,1,0])
     color0.setInput(0, copytopoints, 0)
 
-    out_skin = upper_lvl.node("Out_Skin")
+    out_skin = upper_lvl.node("Out_anim_object")
     parent.setInput(1, out_skin, 0)
 
     zero_color = parent.createNode("color")
@@ -1296,7 +1296,7 @@ float for_roots = @Cd.r>0.5;
     static_obj.parm("objpath").set(static_obj.relativePathTo(i) )
     static_obj.parm("usetransform").set(1)
     static_obj.parm("animategeo").set(1)
-    static_obj.parm("collisiondetection").set(1)
+    static_obj.parm("collisiondetection").set(2)
     static_obj.parm("offset").set(0.02)
     static_obj.parm("friction").set(0)
 
